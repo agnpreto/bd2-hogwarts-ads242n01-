@@ -9,7 +9,7 @@
 
 | Nome | Matrícula | Usuário do GitHub |
 | --- | --- | --- |
-|  |  |  |
+| Giovane Lucas Fonseca Dias | 2418010 | giovanefonseca |
 
 ## O cenário
 
