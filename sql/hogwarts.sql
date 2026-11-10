@@ -263,27 +263,45 @@ WHERE loja = 'Dedosdemel';
 -- 3. REMOÇÃO DE DADOS (DELETE) E TESTES DE RESTRIÇÕES
 -- =====================================================================
 -- Questão 13
--- Erro:
--- Explicação:
+-- DELETE FROM casa WHERE nome_casa = 'Sonserina';
+-- Erro: Error Code: 1451. Cannot delete or update a parent row: a foreign key constraint fails
+-- Explicação: A casa 'Sonserina' está sendo referenciada por registros nas tabelas 'professor' e 'aluno'. O banco bloqueia a exclusão para manter a integridade referencial da chave estrangeira (FK).
 
 -- Questão 14
--- Erro:
--- Explicação:
+-- INSERT INTO aluno (nome, ano_escolar, id_casa) VALUES ('Dobby', 8, 1);
+-- Erro: Error Code: 3819. Check constraint 'aluno_chk_1' is violated.
+-- Explicação: A tabela 'aluno' possui uma restrição CHECK que permite apenas valores entre 1 e 7 para a coluna 'ano_escolar'. O valor 8 viola essa regra.
 
 -- Questão 15
--- Erro:
--- Explicação:
+-- INSERT INTO aluno (nome, ano_escolar, id_casa, email) VALUES ('Harry Potter (Polissuco)', 5, 1, 'harry.potter@hogwarts.edu');
+-- Erro: Error Code: 1062. Duplicate entry 'harry.potter@hogwarts.edu' for key 'aluno.uq_aluno_email'
+-- Explicação: A coluna 'email' possui a restrição UNIQUE (uq_aluno_email) criada na questão 7. Como esse e-mail já pertence ao aluno Harry Potter, o banco impede a duplicidade.
 
 -- Questão 16
--- Erro:
--- Explicação:
+-- DELETE FROM professor WHERE nome = 'Severo Snape';
+-- Erro: Error Code: 1451. Cannot delete or update a parent row: a foreign key constraint fails
+-- Explicação: O professor Severo Snape está vinculado à disciplina 'Poções' na tabela 'disciplina' (FK id_prof), impedindo sua exclusão direta.
 
 -- Questão 17
+DELETE FROM professor WHERE nome = 'Gilderoy Lockhart';
+-- Explicação: Este comando funciona porque Gilderoy Lockhart não possui vínculos (chaves estrangeiras) em nenhuma outra tabela (não ministra disciplinas e não tem registros de pontos), ao contrário de Severo Snape.
 
 -- Questão 18
+DELETE FROM matricula 
+WHERE id_aluno IN (SELECT id_aluno FROM aluno WHERE nome = 'Vicente Crabbe');
+
+DELETE FROM aluno 
+WHERE nome = 'Vicente Crabbe';
 
 -- Questão 19
+DELETE FROM disciplina 
+WHERE id_disc NOT IN (SELECT DISTINCT id_disc FROM matricula);
 
+SELECT 
+    (SELECT COUNT(*) FROM professor) AS professores,
+    (SELECT COUNT(*) FROM aluno) AS alunos,
+    (SELECT COUNT(*) FROM disciplina) AS disciplinas,
+    (SELECT COUNT(*) FROM matricula) AS matriculas;
 
 -- =====================================================================
 -- 4. TRIGGERS
