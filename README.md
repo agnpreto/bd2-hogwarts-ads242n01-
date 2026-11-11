@@ -8,8 +8,8 @@
 ## Aluno
 
 | Nome | Matrícula | Usuário do GitHub |
-| --- | --- | --- |
-|  |  |  |
+| Cauã Gomes | 2404119 | cauagms |
+
 
 ## O cenário
 
