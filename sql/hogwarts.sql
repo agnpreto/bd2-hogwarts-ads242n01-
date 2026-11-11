@@ -726,3 +726,139 @@ SELECT 'Folha salarial dos professores', SUM(salario) FROM professor
 UNION ALL
 SELECT 'Total de galeões nos cofres dos alunos', SUM(saldo_galeoes) FROM aluno;
 
+-- =====================================================
+-- 7. VIEWS
+-- =====================================================
+-- Questão 7.31
+CREATE VIEW vw_placar_casas AS
+SELECT nome_casa, pontos
+FROM casa
+ORDER BY pontos DESC;
+
+-- Questão 7.32
+CREATE VIEW vw_boletim AS
+SELECT a.nome AS aluno,
+       COALESCE(c.nome_casa, 'Sem casa') AS casa,
+       d.nome_disc AS disciplina,
+       COALESCE(p.nome, 'Sem professor') AS professor,
+       m.nota,
+       m.situacao
+FROM matricula m
+JOIN aluno a       ON a.id_aluno = m.id_aluno
+LEFT JOIN casa c   ON c.id_casa = a.id_casa
+JOIN disciplina d  ON d.id_disc = m.id_disc
+LEFT JOIN professor p ON p.id_prof = d.id_prof;
+
+-- Questão 7.33
+CREATE VIEW vw_extrato_loja AS
+SELECT a.nome AS aluno,
+       p.nome_produto AS produto,
+       p.loja,
+       c.quantidade,
+       c.valor_total,
+       c.data_compra
+FROM compra c
+JOIN aluno a   ON a.id_aluno = c.id_aluno
+JOIN produto p ON p.id_produto = c.id_produto;
+
+-- Questão 7.34
+CREATE VIEW vw_alunos_destaque AS
+SELECT a.nome AS aluno,
+       c.nome_casa AS casa,
+       ROUND(AVG(m.nota), 2) AS media
+FROM aluno a
+JOIN casa c      ON c.id_casa = a.id_casa
+JOIN matricula m ON m.id_aluno = a.id_aluno
+GROUP BY a.id_aluno, a.nome, c.nome_casa
+HAVING AVG(m.nota) >= 8;
+
+-- Questão 7.35
+CREATE VIEW vw_quadro_professores AS
+SELECT p.nome AS professor,
+       COALESCE((SELECT c.nome_casa FROM casa c WHERE c.id_casa = p.id_casa),
+                'Não é diretor') AS casa_dirigida,
+       (SELECT COUNT(*) FROM disciplina d WHERE d.id_prof = p.id_prof) AS qtd_disciplinas,
+       COALESCE((SELECT SUM(r.pontos) FROM registro_pontos r WHERE r.id_prof = p.id_prof),
+                0) AS total_pontos_concedidos
+FROM professor p;
+
+-- Questão 7.36
+SELECT * FROM vw_placar_casas;
+
+SELECT * FROM vw_boletim WHERE casa = 'Corvinal';
+
+SELECT loja, SUM(valor_total) AS total_faturado
+FROM vw_extrato_loja
+GROUP BY loja;
+
+SELECT * FROM vw_alunos_destaque ORDER BY media DESC;
+
+SELECT * FROM vw_quadro_professores ORDER BY total_pontos_concedidos DESC;
+
+-- Questão 7.37
+INSERT INTO registro_pontos (id_aluno, id_prof, pontos, motivo, data_registro)
+VALUES (11, 1, 20, 'Venceu a primeira tarefa do Torneio', '2026-11-10');
+SELECT * FROM vw_placar_casas;
+-- Mudou: a Lufa-Lufa passou de 50 para 70 pontos. A view não guarda dados, ela só
+-- guarda a consulta; cada vez que é usada, roda de novo sobre a tabela casa, que o
+-- trigger já tinha atualizado.
+
+-- Questão 7.38
+CREATE OR REPLACE VIEW vw_placar_casas AS
+SELECT nome_casa, fundador, pontos
+FROM casa
+ORDER BY pontos DESC;
+
+-- =====================================================
+-- 8. CONTROLE DE ACESSO (DCL)
+-- =====================================================
+-- Questão 8.39
+CREATE USER 'filch'@'localhost'       IDENTIFIED BY 'MadameNorra#1';
+CREATE USER 'mcgonagall'@'localhost'  IDENTIFIED BY 'Animago#Gato1';
+CREATE USER 'dumbledore'@'localhost'  IDENTIFIED BY 'Fenix#Fawkes1';
+
+-- Questão 8.40
+GRANT SELECT ON hogwarts.vw_placar_casas TO 'filch'@'localhost';
+
+-- Questão 8.41
+GRANT SELECT, INSERT ON hogwarts.registro_pontos TO 'mcgonagall'@'localhost';
+GRANT SELECT ON hogwarts.aluno TO 'mcgonagall'@'localhost';
+GRANT SELECT ON hogwarts.vw_boletim TO 'mcgonagall'@'localhost';
+
+-- Questão 8.42
+GRANT ALL PRIVILEGES ON hogwarts.* TO 'dumbledore'@'localhost' WITH GRANT OPTION;
+
+-- Questão 8.43
+SHOW GRANTS FOR 'filch'@'localhost';
+SHOW GRANTS FOR 'mcgonagall'@'localhost';
+
+-- Questão 8.44 (rodar em uma conexão nova, logado como filch)
+-- SELECT * FROM hogwarts.vw_placar_casas;   -- funciona
+-- SELECT * FROM hogwarts.aluno;             -- ERRO 1142: SELECT command denied to user 'filch'
+--                                           -- (ele só tem permissão na view, não na tabela)
+
+-- Questão 8.45 (rodar logado como mcgonagall)
+-- a) INSERT INTO hogwarts.registro_pontos (id_aluno, id_prof, pontos, motivo, data_registro)
+--    VALUES (2, 1, 10, 'Ajudou um colega em Transfiguração', '2026-11-10');
+-- b) UPDATE hogwarts.casa SET pontos = 1000 WHERE id_casa = 1;   -- ERRO 1142: UPDATE command denied
+-- Como o trigger conseguiu? Triggers rodam com os privilégios do DEFINER (quem criou o
+-- trigger, aqui o usuário admin), e não com os de quem disparou o INSERT. Por isso o
+-- UPDATE em casa funciona dentro do trigger, mesmo a McGonagall não tendo esse privilégio.
+
+-- Questão 8.46
+REVOKE INSERT ON hogwarts.registro_pontos FROM 'mcgonagall'@'localhost';
+SHOW GRANTS FOR 'mcgonagall'@'localhost';
+
+-- Questão 8.47
+CREATE ROLE 'monitor';
+GRANT SELECT ON hogwarts.vw_boletim TO 'monitor';
+GRANT SELECT ON hogwarts.vw_placar_casas TO 'monitor';
+CREATE USER 'percy'@'localhost' IDENTIFIED BY 'Monitor#Chefe1';
+GRANT 'monitor' TO 'percy'@'localhost';
+SET DEFAULT ROLE 'monitor' TO 'percy'@'localhost';
+-- Vantagem do papel: as permissões ficam em um lugar só. Se mudar a regra, altera o
+-- papel uma vez e vale para todos os monitores; para um monitor novo, basta atribuir o papel.
+
+-- Questão 8.48
+DROP USER 'filch'@'localhost', 'mcgonagall'@'localhost', 'dumbledore'@'localhost', 'percy'@'localhost';
+DROP ROLE 'monitor';
