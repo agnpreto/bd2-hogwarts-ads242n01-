@@ -437,3 +437,292 @@ SELECT nome, saldo_galeoes FROM aluno WHERE id_aluno IN (1, 5);
 SELECT nome_produto, estoque FROM produto WHERE id_produto IN (2, 3);
 SELECT SUM(valor_total) AS soma_compras FROM compra;
 
+-- =====================================================
+-- 5. TRANSAÇÕES (TCL) - BANCO GRINGOTES
+-- =====================================================
+-- Questão 5.26
+START TRANSACTION;
+UPDATE aluno SET saldo_galeoes = saldo_galeoes - 50 WHERE nome = 'Draco Malfoy';
+UPDATE aluno SET saldo_galeoes = saldo_galeoes + 50 WHERE nome = 'Pansy Parkinson';
+COMMIT;
+SELECT nome, saldo_galeoes FROM aluno WHERE nome IN ('Draco Malfoy', 'Pansy Parkinson');
+
+-- Questão 5.27
+START TRANSACTION;
+UPDATE casa SET pontos = 0;
+SELECT nome_casa, pontos FROM casa;   -- tudo zerado
+ROLLBACK;
+SELECT nome_casa, pontos FROM casa;   -- placar voltou ao normal
+
+-- Questão 5.28
+START TRANSACTION;
+INSERT INTO compra (id_aluno, id_produto, quantidade, data_compra)
+VALUES (1, 1, 1, '2026-11-10');
+SELECT saldo_galeoes FROM aluno WHERE id_aluno = 1;       -- 47.00
+SELECT estoque FROM produto WHERE id_produto = 1;         -- 8
+ROLLBACK;
+SELECT saldo_galeoes FROM aluno WHERE id_aluno = 1;       -- 54.00
+SELECT estoque FROM produto WHERE id_produto = 1;         -- 9
+-- O que aconteceu: as alterações feitas pelo trigger (saldo e estoque) fazem parte da
+-- mesma transação, então o ROLLBACK desfez tudo, inclusive o que o trigger fez.
+
+-- Questão 5.29
+START TRANSACTION;
+INSERT INTO registro_pontos (id_aluno, id_prof, pontos, motivo, data_registro)
+VALUES (12, 4, 15, 'Cuidou das estufas no feriado', '2026-11-10');
+SAVEPOINT sp_pontos_legitimos;
+INSERT INTO registro_pontos (id_aluno, id_prof, pontos, motivo, data_registro)
+VALUES (6, 2, 100, 'Favoritismo descarado', '2026-11-10');
+ROLLBACK TO SAVEPOINT sp_pontos_legitimos;
+COMMIT;
+
+SELECT nome_casa, pontos FROM casa;
+SELECT COUNT(*) AS linhas_registro_pontos FROM registro_pontos;   -- 17
+
+-- Questão 5.30
+SELECT @@autocommit;
+-- Retorna 1 = autocommit LIGADO: cada comando é confirmado (COMMIT) sozinho,
+-- a não ser que você abra uma transação com START TRANSACTION.
+-- CREATE TABLE no meio de uma transação aberta faz COMMIT implícito: a transação é
+-- confirmada automaticamente (comandos DDL não podem ser desfeitos com ROLLBACK).
+
+-- =====================================================
+-- 6. DESAFIOS DE CONSULTA
+-- =====================================================
+-- Nível 1
+-- Questão 6.1
+SELECT p.nome, p.salario
+FROM professor p
+WHERE p.salario BETWEEN 6000.00 AND 9000.00
+ORDER BY p.salario DESC;
+
+-- Questão 6.2
+SELECT a.nome, a.ano_escolar
+FROM aluno a
+WHERE a.ano_escolar IN (1, 4, 6, 7)
+ORDER BY a.ano_escolar;
+
+-- Questão 6.3
+SELECT a.nome
+FROM aluno a
+WHERE a.nome LIKE '_a%';
+
+-- Questão 6.4
+SELECT d.nome_disc
+FROM disciplina d
+WHERE d.id_prof IS NULL;
+
+-- Questão 6.5
+SELECT p.nome_produto, p.preco
+FROM produto p
+WHERE p.preco NOT BETWEEN 5 AND 20
+ORDER BY p.preco;
+
+-- Questão 6.6
+SELECT DISTINCT p.loja
+FROM produto p
+ORDER BY p.loja;
+
+-- Nível 2
+-- Questão 6.7
+SELECT a.nome AS aluno, c.nome_casa AS casa
+FROM aluno a
+INNER JOIN casa c ON c.id_casa = a.id_casa
+ORDER BY c.nome_casa, a.nome;
+-- Aparecem 12 alunos, e não 13: o Teddy Lupin não tem casa (id_casa NULL).
+-- O INNER JOIN só traz quem tem par nas duas tabelas.
+
+-- Questão 6.8
+SELECT a.nome AS aluno,
+       COALESCE(c.nome_casa, 'Aguardando o Chapéu Seletor') AS casa
+FROM aluno a
+LEFT JOIN casa c ON c.id_casa = a.id_casa
+ORDER BY a.nome;
+
+-- Questão 6.9
+SELECT p.nome AS professor
+FROM disciplina d
+RIGHT JOIN professor p ON p.id_prof = d.id_prof
+WHERE d.id_disc IS NULL;
+
+-- Questão 6.10
+SELECT a.nome AS aluno,
+       d.nome_disc AS disciplina,
+       COALESCE(p.nome, 'Sem professor') AS professor,
+       m.nota,
+       m.situacao
+FROM aluno a
+JOIN casa c       ON c.id_casa = a.id_casa
+JOIN matricula m  ON m.id_aluno = a.id_aluno
+JOIN disciplina d ON d.id_disc = m.id_disc
+LEFT JOIN professor p ON p.id_prof = d.id_prof
+WHERE c.nome_casa = 'Grifinória'
+ORDER BY a.nome, d.nome_disc;
+
+-- Questão 6.11
+SELECT c.id_compra AS numero_compra,
+       a.nome AS aluno,
+       p.nome_produto AS produto,
+       p.loja,
+       c.quantidade,
+       c.valor_total,
+       c.data_compra
+FROM compra c
+JOIN aluno a   ON a.id_aluno = c.id_aluno
+JOIN produto p ON p.id_produto = c.id_produto
+ORDER BY c.data_compra, c.id_compra;
+
+-- Nível 3
+-- Questão 6.12
+SELECT d.nome_disc AS disciplina,
+       COUNT(m.id_aluno) AS qtd_alunos,
+       ROUND(AVG(m.nota), 2) AS media,
+       MAX(m.nota) AS maior_nota,
+       MIN(m.nota) AS menor_nota
+FROM disciplina d
+JOIN matricula m ON m.id_disc = d.id_disc
+GROUP BY d.id_disc, d.nome_disc
+HAVING AVG(m.nota) >= 7
+ORDER BY media DESC;
+
+-- Questão 6.13
+SELECT c.nome_casa AS casa,
+       COUNT(*) AS qtd_registros,
+       SUM(CASE WHEN r.pontos > 0 THEN r.pontos ELSE 0 END) AS pontos_ganhos,
+       SUM(CASE WHEN r.pontos < 0 THEN r.pontos ELSE 0 END) AS pontos_perdidos,
+       SUM(r.pontos) AS saldo
+FROM registro_pontos r
+JOIN aluno a ON a.id_aluno = r.id_aluno
+JOIN casa c  ON c.id_casa = a.id_casa
+GROUP BY c.id_casa, c.nome_casa;
+
+-- Questão 6.14
+SELECT p.loja,
+       COUNT(*) AS qtd_compras,
+       SUM(c.valor_total) AS faturamento
+FROM compra c
+JOIN produto p ON p.id_produto = c.id_produto
+GROUP BY p.loja
+HAVING SUM(c.valor_total) > 20
+ORDER BY faturamento DESC;
+
+-- Questão 6.15
+SELECT MONTH(r.data_registro) AS mes,
+       COUNT(*) AS qtd_registros,
+       SUM(r.pontos) AS total_pontos
+FROM registro_pontos r
+GROUP BY MONTH(r.data_registro)
+ORDER BY mes;
+
+-- Questão 6.16
+SELECT p.nome AS professor,
+       COUNT(*) AS qtd_registros,
+       SUM(r.pontos) AS total_concedido
+FROM registro_pontos r
+JOIN professor p ON p.id_prof = r.id_prof
+GROUP BY p.id_prof, p.nome
+HAVING COUNT(*) >= 2
+ORDER BY total_concedido DESC;
+
+-- Nível 4
+-- Questão 6.17
+SELECT a.nome
+FROM aluno a
+WHERE a.id_aluno IN (
+    SELECT c.id_aluno FROM compra c
+    WHERE c.id_produto IN (
+        SELECT p.id_produto FROM produto p WHERE p.loja = 'Dedosdemel'
+    )
+);
+
+-- Questão 6.18
+SELECT p.nome_produto, p.estoque
+FROM produto p
+WHERE p.id_produto NOT IN (SELECT c.id_produto FROM compra c);
+
+-- Questão 6.19
+SELECT a.nome, a.saldo_galeoes
+FROM aluno a
+WHERE a.saldo_galeoes > (SELECT AVG(saldo_galeoes) FROM aluno);
+
+-- Questão 6.20
+SELECT p.nome, p.salario
+FROM professor p
+WHERE p.salario > ALL (
+    SELECT p2.salario FROM professor p2 WHERE p2.id_casa IS NULL
+);
+
+-- Questão 6.21
+SELECT a.nome, a.saldo_galeoes
+FROM aluno a
+WHERE a.id_casa <> (SELECT id_casa FROM casa WHERE nome_casa = 'Sonserina')
+  AND a.saldo_galeoes > ANY (
+      SELECT a2.saldo_galeoes FROM aluno a2
+      WHERE a2.id_casa = (SELECT id_casa FROM casa WHERE nome_casa = 'Sonserina')
+  );
+-- > ANY equivale a comparar com o MENOR valor da subconsulta (basta ser maior que
+-- pelo menos um). Já > ALL compara com o MAIOR valor.
+
+-- Questão 6.22
+SELECT c.nome_casa
+FROM casa c
+WHERE EXISTS (
+    SELECT 1
+    FROM aluno a
+    JOIN matricula m ON m.id_aluno = a.id_aluno
+    WHERE a.id_casa = c.id_casa AND m.nota = 10
+);
+
+-- Questão 6.23
+SELECT a.nome
+FROM aluno a
+WHERE NOT EXISTS (
+    SELECT 1 FROM compra c WHERE c.id_aluno = a.id_aluno
+);
+
+-- Questão 6.24
+SELECT c.nome_casa AS casa,
+       ROUND(AVG(t.media_aluno), 2) AS media_da_casa
+FROM (
+    SELECT m.id_aluno, AVG(m.nota) AS media_aluno
+    FROM matricula m
+    GROUP BY m.id_aluno
+) t
+JOIN aluno a ON a.id_aluno = t.id_aluno
+JOIN casa c  ON c.id_casa = a.id_casa
+GROUP BY c.id_casa, c.nome_casa
+ORDER BY media_da_casa DESC;
+
+-- Nível 5
+-- Questão 6.25
+SELECT a.nome, 'Aluno' AS vinculo FROM aluno a
+UNION ALL
+SELECT p.nome, 'Professor' AS vinculo FROM professor p
+ORDER BY nome;
+
+-- Questão 6.26 (primeiro UNION ALL: 27 linhas)
+SELECT a.nome
+FROM compra c JOIN aluno a ON a.id_aluno = c.id_aluno
+UNION ALL
+SELECT a.nome
+FROM registro_pontos r JOIN aluno a ON a.id_aluno = r.id_aluno;
+
+-- Depois UNION: 12 linhas
+SELECT a.nome
+FROM compra c JOIN aluno a ON a.id_aluno = c.id_aluno
+UNION
+SELECT a.nome
+FROM registro_pontos r JOIN aluno a ON a.id_aluno = r.id_aluno;
+-- Diferença: UNION ALL junta tudo e mantém as repetições (27 linhas).
+-- UNION remove linhas repetidas (12 nomes diferentes), por isso é um pouco mais lento.
+
+-- Questão 6.27
+SELECT 'Total de pontos distribuídos' AS indicador, SUM(pontos) AS valor
+FROM registro_pontos
+UNION ALL
+SELECT 'Total de galeões gastos na loja', SUM(valor_total) FROM compra
+UNION ALL
+SELECT 'Folha salarial dos professores', SUM(salario) FROM professor
+UNION ALL
+SELECT 'Total de galeões nos cofres dos alunos', SUM(saldo_galeoes) FROM aluno;
+
