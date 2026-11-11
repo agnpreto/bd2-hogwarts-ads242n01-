@@ -243,3 +243,197 @@ UPDATE produto SET ativo = 'N' WHERE estoque = 0;
 -- Questão 2.2.12
 UPDATE produto SET preco = preco * 0.80 WHERE loja = 'Dedosdemel';
 
+-- =====================================================================
+-- 3. REMOÇÃO DE DADOS (DELETE) E TESTES DE RESTRIÇÕES
+-- =====================================================================
+-- Questão 13
+-- Erro: 1451 - Cannot delete or update a parent row: a foreign key constraint fails
+-- Explicação: a Sonserina é "pai" de alunos e professor (FK id_casa). O banco não deixa
+-- apagar um registro que ainda é usado por outras tabelas.
+-- DELETE FROM casa WHERE nome_casa = 'Sonserina';
+
+-- Questão 14
+-- Erro: 3819 - Check constraint 'ck_aluno_ano' is violated
+-- Explicação: o CHECK só aceita ano_escolar entre 1 e 7, e o Dobby está no 8º.
+-- INSERT INTO aluno (nome, ano_escolar, id_casa, saldo_galeoes) VALUES ('Dobby', 8, 1, 0);
+
+-- Questão 15
+-- Erro: 1062 - Duplicate entry 'harry.potter@hogwarts.edu' for key 'uq_aluno_email'
+-- Explicação: a restrição UNIQUE não deixa repetir e-mail.
+-- INSERT INTO aluno (nome, ano_escolar, id_casa, saldo_galeoes, email)
+-- VALUES ('Harry Potter (Polissuco)', 5, 1, 0, 'harry.potter@hogwarts.edu');
+
+-- Questão 16
+-- Erro: 1451 - Cannot delete or update a parent row: a foreign key constraint fails
+-- Explicação: o Snape é professor da disciplina Poções (disciplina.id_prof aponta para ele).
+-- DELETE FROM professor WHERE nome = 'Severo Snape';
+
+-- Questão 17
+-- Funciona porque nenhuma outra tabela referencia o Lockhart (ele não tem disciplina
+-- nem registro de pontos). Sem filhos, a FK não é quebrada.
+DELETE FROM professor WHERE nome = 'Gilderoy Lockhart';
+
+-- Questão 18
+DELETE FROM matricula
+WHERE id_aluno IN (SELECT id_aluno FROM aluno WHERE nome = 'Vicente Crabbe');
+DELETE FROM aluno WHERE nome = 'Vicente Crabbe';
+
+-- Questão 19
+DELETE FROM disciplina
+WHERE id_disc NOT IN (SELECT id_disc FROM matricula);
+
+-- Confira: 8 professores, 13 alunos, 8 disciplinas, 33 matrículas
+SELECT (SELECT COUNT(*) FROM professor) AS professores,
+       (SELECT COUNT(*) FROM aluno) AS alunos,
+       (SELECT COUNT(*) FROM disciplina) AS disciplinas,
+       (SELECT COUNT(*) FROM matricula) AS matriculas;
+
+-- =====================================================================
+-- 4. TRIGGERS
+-- =====================================================================
+DELIMITER $$
+
+-- Questão 20 - trg_pontos_casa
+CREATE TRIGGER trg_pontos_casa
+AFTER INSERT ON registro_pontos
+FOR EACH ROW
+BEGIN
+    UPDATE casa
+    SET pontos = pontos + NEW.pontos
+    WHERE id_casa = (SELECT id_casa FROM aluno WHERE id_aluno = NEW.id_aluno);
+END$$
+
+-- Questão 21 - trg_valida_compra
+CREATE TRIGGER trg_valida_compra
+BEFORE INSERT ON compra
+FOR EACH ROW
+BEGIN
+    DECLARE v_estoque INT;
+    DECLARE v_preco   DECIMAL(10,2);
+    DECLARE v_saldo   DECIMAL(10,2);
+
+    SELECT estoque, preco INTO v_estoque, v_preco
+    FROM produto WHERE id_produto = NEW.id_produto;
+
+    SELECT saldo_galeoes INTO v_saldo
+    FROM aluno WHERE id_aluno = NEW.id_aluno;
+
+    IF v_estoque < NEW.quantidade THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Estoque insuficiente no Beco Diagonal';
+    ELSEIF v_saldo < v_preco * NEW.quantidade THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Galeões insuficientes no cofre do aluno';
+    ELSE
+        SET NEW.valor_total = v_preco * NEW.quantidade;
+    END IF;
+END$$
+
+-- Questão 22 - trg_baixa_compra
+CREATE TRIGGER trg_baixa_compra
+AFTER INSERT ON compra
+FOR EACH ROW
+BEGIN
+    UPDATE produto
+    SET estoque = estoque - NEW.quantidade
+    WHERE id_produto = NEW.id_produto;
+
+    UPDATE aluno
+    SET saldo_galeoes = saldo_galeoes - NEW.valor_total
+    WHERE id_aluno = NEW.id_aluno;
+END$$
+
+-- Questão 23 - trg_situacao_nota
+CREATE TRIGGER trg_situacao_nota
+BEFORE UPDATE ON matricula
+FOR EACH ROW
+BEGIN
+    IF OLD.nota <> NEW.nota THEN
+        SET NEW.situacao = IF(NEW.nota >= 6, 'Aprovado', 'Reprovado');
+    END IF;
+END$$
+
+-- Questão 24 - trg_audita_salario
+CREATE TRIGGER trg_audita_salario
+AFTER UPDATE ON professor
+FOR EACH ROW
+BEGIN
+    IF OLD.salario <> NEW.salario THEN
+        INSERT INTO log_auditoria (tabela, operacao, descricao)
+        VALUES ('professor', 'UPDATE',
+                CONCAT(OLD.nome, ': salário de ', OLD.salario, ' para ', NEW.salario));
+    END IF;
+END$$
+
+DELIMITER ;
+
+-- Pergunta: por que a validação é BEFORE e a baixa é AFTER?
+-- Resposta: BEFORE roda ANTES de gravar, então pode bloquear a compra (SIGNAL) e
+-- preencher o valor_total antes de salvar. AFTER roda só depois que a compra foi
+-- gravada com sucesso; assim o estoque e o saldo só mudam se a compra for válida.
+
+-- Confira: devem aparecer 5 triggers
+SHOW TRIGGERS FROM hogwarts;
+
+-- =====================================================================
+-- 4.1 Testando os triggers
+-- Questão 4.25
+INSERT INTO registro_pontos (id_aluno, id_prof, pontos, motivo, data_registro) VALUES
+( 2, 3, 20, 'Feitiço de levitação perfeito', '2026-09-10'),
+( 1, 2, -10, 'Atraso na aula de Poções', '2026-09-12'),
+( 5, 2, 15, 'Poção do Morto-Vivo impecável', '2026-09-12'),
+( 8, 5, 10, 'Cuidou de um testrálio ferido', '2026-09-20'),
+(11, 4, 25, 'Ajudou os alunos do 1º ano', '2026-09-25'),
+( 4, 4, 30, 'Identificou uma Mimbulus mimbletonia', '2026-10-02'),
+( 6, 1, -20, 'Fora da cama após o toque de recolher', '2026-10-05'),
+( 1, 6, 50, 'Conjurou um Patrono corpóreo', '2026-10-15'),
+( 9, 3, 15, 'Duelo exemplar no Clube de Duelos', '2026-10-18'),
+( 5, 1, -30, 'Duelo proibido no corredor', '2026-10-31'),
+(10, 7, 5, 'Interpretação da bola de cristal', '2026-11-03'),
+(13, 4, 10, 'Colheita de mandrágoras', '2026-11-05'),
+( 3, 9, 10, 'Identificou um bezoar', '2026-11-06'),
+( 8, 3, 20, 'Resposta brilhante sobre o Diadema', '2026-11-08'),
+( 6, 2, 25, 'Antídoto para venenos comuns', '2026-11-09'),
+( 5, 9, 40, 'Melhor poção do Clube do Slugue', '2026-11-09');
+
+INSERT INTO compra (id_aluno, id_produto, quantidade, data_compra) VALUES
+( 5, 2, 1, '2026-09-01'),
+( 2, 5, 2, '2026-09-02'),
+( 1, 3, 10, '2026-09-03'),
+( 3, 4, 5, '2026-09-03'),
+( 9, 8, 1, '2026-09-15'),
+( 8, 5, 1, '2026-09-20'),
+(11, 1, 1, '2026-10-01'),
+( 6, 3, 20, '2026-10-10'),
+( 1, 7, 2, '2026-10-20'),
+(13, 4, 10, '2026-11-02');
+
+-- Teste 1: Rony (id 3) tenta comprar 1 Nimbus 2001 (id 2)
+-- ERRO ESPERADO: 1644 - Galeões insuficientes no cofre do aluno
+-- (o estoque tem 2, mas o Rony só tem 6 galeões e a vassoura custa 300)
+-- INSERT INTO compra (id_aluno, id_produto, quantidade, data_compra) VALUES (3, 2, 1, '2026-11-10');
+
+-- Teste 2: Hermione (id 2) tenta comprar 1 Caldeirão de Estanho (id 6)
+-- ERRO ESPERADO: 1644 - Estoque insuficiente no Beco Diagonal
+-- (o estoque do caldeirão é 0)
+-- INSERT INTO compra (id_aluno, id_produto, quantidade, data_compra) VALUES (2, 6, 1, '2026-11-10');
+
+-- Teste 3: recuperação do Rony em Poções (id_disc 2), sem mexer em situacao
+UPDATE matricula SET nota = 6.5 WHERE id_aluno = 3 AND id_disc = 2;
+SELECT id_aluno, id_disc, nota, situacao FROM matricula WHERE id_aluno = 3 AND id_disc = 2;
+-- Resultado: situacao virou 'Aprovado' sozinha (trigger trg_situacao_nota).
+
+-- Teste 4: salário e data do Hagrid
+UPDATE professor SET salario = 5000.00 WHERE nome = 'Rúbeo Hagrid';
+UPDATE professor SET data_admissao = '1993-08-15' WHERE nome = 'Rúbeo Hagrid';
+SELECT * FROM log_auditoria;
+-- Resultado: 1 linha. O 1º UPDATE mudou o salário (trigger gravou); o 2º só mudou a data,
+-- então OLD.salario = NEW.salario e o trigger não gravou nada.
+-- O reajuste da questão 10 não aparece porque foi feito ANTES de o trigger existir.
+
+-- Confira: placar 100/50/35/30, Draco 200, Harry 54, Nimbus 2, Sapo 170, soma 474, log 1 linha
+SELECT nome_casa, pontos FROM casa;
+SELECT nome, saldo_galeoes FROM aluno WHERE id_aluno IN (1, 5);
+SELECT nome_produto, estoque FROM produto WHERE id_produto IN (2, 3);
+SELECT SUM(valor_total) AS soma_compras FROM compra;
+
