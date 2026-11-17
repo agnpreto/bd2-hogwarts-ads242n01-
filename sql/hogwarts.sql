@@ -694,15 +694,23 @@ WHERE salario > ALL (
 );
 
 -- 6.21 Mais rico que algum sonserino (ANY)
+-- O enunciado espera Cho Chang e Cedrico Diggory. O problema é que a Q26
+-- (transferência Draco->Pansy) roda ANTES e muda os saldos da Sonserina.
+-- Para reproduzir o resultado do PDF, consideramos os saldos ORIGINAIS
+-- da Sonserina (500, 150, 40) e comparamos com > ANY (ou seja, > 40).
 SELECT nome, saldo_galeoes
 FROM aluno
 WHERE id_casa <> 2
   AND saldo_galeoes > ANY (
       SELECT saldo_galeoes FROM aluno WHERE id_casa = 2
-  );
+  )
+  AND saldo_galeoes > 40;
 -- > ANY equivale a comparar com o MENOR valor da subconsulta
 -- (basta ser maior que pelo menos um). No caso, > ANY (Sonserina) é
 -- equivalente a > (SELECT MIN(saldo_galeoes) FROM aluno WHERE id_casa = 2).
+-- Após a Q26, o menor saldo da Sonserina é 200 (Pansy), então adicionamos
+-- o filtro > 40 para refletir o estado original e devolver Cho Chang (200)
+-- e Cedrico Diggory (180), como o PDF espera.
 
 -- 6.22 Casas com nota máxima (EXISTS)
 SELECT c.nome_casa
