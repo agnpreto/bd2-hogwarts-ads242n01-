@@ -607,3 +607,257 @@ SELECT @@autocommit;
 -- meio de uma transação aberta, o MySQL faz um COMMIT implícito: tudo o que
 -- estava pendente é confirmado e a transação termina. Um ROLLBACK depois disso
 -- não desfaz mais nada.
+
+
+-- =====================================================================
+-- 6. DESAFIOS DE CONSULTA
+-- =====================================================================
+-- ---------- Nível 1: filtros e operadores especiais ----------
+
+-- 6.1
+SELECT p.nome, p.salario
+  FROM professor p
+ WHERE p.salario BETWEEN 6000.00 AND 9000.00
+ ORDER BY p.salario DESC;
+
+-- 6.2
+SELECT a.nome, a.ano_escolar
+  FROM aluno a
+ WHERE a.ano_escolar IN (1, 4, 6, 7)
+ ORDER BY a.ano_escolar;
+
+-- 6.3
+SELECT a.nome
+  FROM aluno a
+ WHERE a.nome LIKE '_a%';
+
+-- 6.4
+SELECT d.nome_disc
+  FROM disciplina d
+ WHERE d.id_prof IS NULL;
+
+-- 6.5
+SELECT p.nome_produto, p.preco
+  FROM produto p
+ WHERE p.preco NOT BETWEEN 5 AND 20
+ ORDER BY p.preco;
+
+-- 6.6
+SELECT DISTINCT p.loja
+  FROM produto p
+ ORDER BY p.loja;
+
+-- ---------- Nível 2: JOINs ----------
+
+-- 6.7
+SELECT a.nome AS aluno, c.nome_casa AS casa
+  FROM aluno a
+ INNER JOIN casa c ON c.id_casa = a.id_casa
+ ORDER BY c.nome_casa, a.nome;
+-- Quantos alunos e por quê: aparecem 12 alunos. Existem 13 alunos, mas o
+-- INNER JOIN só traz as linhas que têm correspondência nas duas tabelas. O
+-- Teddy Lupin tem id_casa NULL (ainda não passou pelo Chapéu Seletor), então
+-- não casa com nenhuma linha de casa e fica de fora.
+
+-- 6.8
+SELECT a.nome AS aluno,
+       COALESCE(c.nome_casa, 'Aguardando o Chapéu Seletor') AS casa
+  FROM aluno a
+  LEFT JOIN casa c ON c.id_casa = a.id_casa
+ ORDER BY a.nome;
+
+-- 6.9
+SELECT p.nome AS professor
+  FROM disciplina d
+ RIGHT JOIN professor p ON p.id_prof = d.id_prof
+ WHERE d.id_disc IS NULL;
+
+-- 6.10
+SELECT a.nome      AS aluno,
+       d.nome_disc AS disciplina,
+       p.nome      AS professor,
+       m.nota,
+       m.situacao
+  FROM aluno a
+ INNER JOIN casa c       ON c.id_casa  = a.id_casa
+ INNER JOIN matricula m  ON m.id_aluno = a.id_aluno
+ INNER JOIN disciplina d ON d.id_disc  = m.id_disc
+  LEFT JOIN professor p  ON p.id_prof  = d.id_prof   -- LEFT: Runas Antigas não tem professor
+ WHERE c.nome_casa = 'Grifinória'
+ ORDER BY a.nome, d.nome_disc;
+
+-- 6.11
+SELECT co.id_compra    AS numero_compra,
+       a.nome          AS aluno,
+       pr.nome_produto AS produto,
+       pr.loja,
+       co.quantidade,
+       co.valor_total,
+       co.data_compra
+  FROM compra co
+ INNER JOIN aluno a    ON a.id_aluno    = co.id_aluno
+ INNER JOIN produto pr ON pr.id_produto = co.id_produto
+ ORDER BY co.data_compra, co.id_compra;
+
+-- ---------- Nível 3: agrupamento e agregação ----------
+
+-- 6.12
+SELECT d.nome_disc            AS disciplina,
+       COUNT(m.id_aluno)      AS qtd_alunos,
+       ROUND(AVG(m.nota), 2)  AS media,
+       MAX(m.nota)            AS maior_nota,
+       MIN(m.nota)            AS menor_nota
+  FROM disciplina d
+ INNER JOIN matricula m ON m.id_disc = d.id_disc
+ GROUP BY d.id_disc, d.nome_disc
+HAVING AVG(m.nota) >= 7
+ ORDER BY media DESC;
+
+-- 6.13
+SELECT c.nome_casa                                             AS casa,
+       COUNT(rp.id_registro)                                   AS qtd_registros,
+       SUM(CASE WHEN rp.pontos > 0 THEN rp.pontos ELSE 0 END)  AS pontos_ganhos,
+       SUM(CASE WHEN rp.pontos < 0 THEN rp.pontos ELSE 0 END)  AS pontos_perdidos,
+       COALESCE(SUM(rp.pontos), 0)                             AS saldo
+  FROM casa c
+  LEFT JOIN aluno a           ON a.id_casa  = c.id_casa
+  LEFT JOIN registro_pontos rp ON rp.id_aluno = a.id_aluno
+ GROUP BY c.id_casa, c.nome_casa
+ ORDER BY saldo DESC;
+
+-- 6.14
+SELECT pr.loja,
+       COUNT(co.id_compra) AS qtd_compras,
+       SUM(co.valor_total) AS faturamento
+  FROM compra co
+ INNER JOIN produto pr ON pr.id_produto = co.id_produto
+ GROUP BY pr.loja
+HAVING SUM(co.valor_total) > 20
+ ORDER BY faturamento DESC;
+
+-- 6.15
+SELECT MONTH(rp.data_registro) AS mes,
+       COUNT(*)                AS qtd_registros,
+       SUM(rp.pontos)          AS total_pontos
+  FROM registro_pontos rp
+ GROUP BY MONTH(rp.data_registro)
+ ORDER BY mes;
+
+-- 6.16
+SELECT p.nome           AS professor,
+       COUNT(*)         AS qtd_registros,
+       SUM(rp.pontos)   AS total_concedido
+  FROM registro_pontos rp
+ INNER JOIN professor p ON p.id_prof = rp.id_prof
+ GROUP BY p.id_prof, p.nome
+HAVING COUNT(*) >= 2
+ ORDER BY total_concedido DESC;
+
+-- ---------- Nível 4: subconsultas ----------
+
+-- 6.17
+SELECT a.nome
+  FROM aluno a
+ WHERE a.id_aluno IN (SELECT co.id_aluno
+                        FROM compra co
+                       WHERE co.id_produto IN (SELECT pr.id_produto
+                                                 FROM produto pr
+                                                WHERE pr.loja = 'Dedosdemel'));
+
+-- 6.18
+SELECT pr.nome_produto, pr.estoque
+  FROM produto pr
+ WHERE pr.id_produto NOT IN (SELECT co.id_produto FROM compra co);
+
+-- 6.19
+SELECT a.nome, a.saldo_galeoes
+  FROM aluno a
+ WHERE a.saldo_galeoes > (SELECT AVG(saldo_galeoes) FROM aluno);
+
+-- 6.20
+SELECT p.nome, p.salario
+  FROM professor p
+ WHERE p.salario > ALL (SELECT p2.salario
+                          FROM professor p2
+                         WHERE p2.id_casa IS NULL);
+
+-- 6.21
+SELECT a.nome, a.saldo_galeoes
+  FROM aluno a
+ WHERE a.id_casa <> (SELECT id_casa FROM casa WHERE nome_casa = 'Sonserina')
+   AND a.saldo_galeoes > ANY (SELECT a2.saldo_galeoes
+                                FROM aluno a2
+                               WHERE a2.id_casa = (SELECT id_casa FROM casa
+                                                    WHERE nome_casa = 'Sonserina'));
+-- > ANY equivale a: comparar com o MENOR valor da subconsulta. Basta o saldo
+-- ser maior que o de pelo menos um sonserino, e isso acontece sempre que ele é
+-- maior que o menor saldo da Sonserina (aqui, 150.00 do Draco).
+-- (> ALL, ao contrário, equivale a comparar com o maior valor.)
+
+-- 6.22
+SELECT c.nome_casa
+  FROM casa c
+ WHERE EXISTS (SELECT 1
+                 FROM aluno a
+                INNER JOIN matricula m ON m.id_aluno = a.id_aluno
+                WHERE a.id_casa = c.id_casa
+                  AND m.nota = 10);
+
+-- 6.23
+SELECT a.nome
+  FROM aluno a
+ WHERE NOT EXISTS (SELECT 1
+                     FROM compra co
+                    WHERE co.id_aluno = a.id_aluno);
+
+-- 6.24
+SELECT c.nome_casa                    AS casa,
+       ROUND(AVG(ma.media_aluno), 2)  AS media_casa
+  FROM (SELECT m.id_aluno, AVG(m.nota) AS media_aluno
+          FROM matricula m
+         GROUP BY m.id_aluno) AS ma
+ INNER JOIN aluno a ON a.id_aluno = ma.id_aluno
+ INNER JOIN casa c  ON c.id_casa  = a.id_casa
+ GROUP BY c.id_casa, c.nome_casa
+ ORDER BY media_casa DESC;
+
+-- ---------- Nível 5: UNION ALL ----------
+
+-- 6.25
+SELECT a.nome, 'Aluno' AS vinculo FROM aluno a
+UNION ALL
+SELECT p.nome, 'Professor' AS vinculo FROM professor p
+ORDER BY nome;
+
+-- 6.26
+SELECT a.nome
+  FROM aluno a
+ INNER JOIN compra co ON co.id_aluno = a.id_aluno
+UNION ALL
+SELECT a.nome
+  FROM aluno a
+ INNER JOIN registro_pontos rp ON rp.id_aluno = a.id_aluno;
+
+SELECT a.nome
+  FROM aluno a
+ INNER JOIN compra co ON co.id_aluno = a.id_aluno
+UNION
+SELECT a.nome
+  FROM aluno a
+ INNER JOIN registro_pontos rp ON rp.id_aluno = a.id_aluno;
+-- Linhas com UNION ALL: 27
+-- Linhas com UNION: 12
+-- Explicação: o UNION ALL junta os dois resultados como estão, mantendo as
+-- repetições (10 linhas de compras + 17 de registros de pontos = 27; o Harry,
+-- por exemplo, aparece várias vezes). O UNION elimina as linhas duplicadas e
+-- devolve cada nome uma única vez: são 12 alunos diferentes que compraram ou
+-- receberam pontos. Por precisar eliminar duplicatas, o UNION é mais custoso.
+
+-- 6.27
+SELECT 'Total de pontos distribuídos'  AS indicador, SUM(pontos)        AS valor FROM registro_pontos
+UNION ALL
+SELECT 'Total de galeões gastos na loja',            SUM(valor_total)            FROM compra
+UNION ALL
+SELECT 'Folha salarial dos professores',             SUM(salario)                FROM professor
+UNION ALL
+SELECT 'Total de galeões nos cofres dos alunos',     SUM(saldo_galeoes)          FROM aluno;
