@@ -666,4 +666,241 @@ ORDER BY total_concedido DESC;
 
 -- ---------- Nível 4: subconsultas ----------
 
--- 6.17 Clientes da Dedosdemel (IN,
+-- 6.17 Clientes da Dedosdemel (IN, subconsultas aninhadas, sem JOIN)
+SELECT nome
+FROM aluno
+WHERE id_aluno IN (
+    SELECT id_aluno FROM compra
+    WHERE id_produto IN (
+        SELECT id_produto FROM produto WHERE loja = 'Dedosdemel'
+    )
+);
+
+-- 6.18 Encalhados (NOT IN)
+SELECT nome_produto, estoque
+FROM produto
+WHERE id_produto NOT IN (SELECT id_produto FROM compra);
+
+-- 6.19 Cofres cheios (subconsulta escalar)
+SELECT nome, saldo_galeoes
+FROM aluno
+WHERE saldo_galeoes > (SELECT AVG(saldo_galeoes) FROM aluno);
+
+-- 6.20 Acima de todos (ALL)
+SELECT nome, salario
+FROM professor
+WHERE salario > ALL (
+    SELECT salario FROM professor WHERE id_casa IS NULL
+);
+
+-- 6.21 Mais rico que algum sonserino (ANY)
+SELECT nome, saldo_galeoes
+FROM aluno
+WHERE id_casa <> 2
+  AND saldo_galeoes > ANY (
+      SELECT saldo_galeoes FROM aluno WHERE id_casa = 2
+  );
+-- > ANY equivale a comparar com o MENOR valor da subconsulta
+-- (basta ser maior que pelo menos um). No caso, > ANY (Sonserina) é
+-- equivalente a > (SELECT MIN(saldo_galeoes) FROM aluno WHERE id_casa = 2).
+
+-- 6.22 Casas com nota máxima (EXISTS)
+SELECT c.nome_casa
+FROM casa c
+WHERE EXISTS (
+    SELECT 1
+    FROM aluno a
+    INNER JOIN matricula m ON a.id_aluno = m.id_aluno
+    WHERE a.id_casa = c.id_casa AND m.nota = 10
+);
+
+-- 6.23 Nunca foram ao Beco (NOT EXISTS)
+SELECT a.nome
+FROM aluno a
+WHERE NOT EXISTS (
+    SELECT 1 FROM compra co WHERE co.id_aluno = a.id_aluno
+);
+
+-- 6.24 Média das médias (subconsulta no FROM)
+SELECT c.nome_casa,
+       ROUND(AVG(media_aluno), 2) AS media_casa
+FROM (
+    SELECT a.id_aluno, a.id_casa, AVG(m.nota) AS media_aluno
+    FROM aluno a
+    INNER JOIN matricula m ON a.id_aluno = m.id_aluno
+    GROUP BY a.id_aluno, a.id_casa
+) AS medias
+INNER JOIN casa c ON medias.id_casa = c.id_casa
+GROUP BY c.nome_casa
+ORDER BY media_casa DESC;
+
+-- ---------- Nível 5: UNION ALL ----------
+
+-- 6.25 Diretório de Hogwarts
+SELECT nome, 'Aluno' AS vinculo FROM aluno
+UNION ALL
+SELECT nome, 'Professor' AS vinculo FROM professor
+ORDER BY nome;
+
+-- 6.26 UNION x UNION ALL
+-- Com UNION ALL (mantém duplicatas):
+SELECT a.nome
+FROM aluno a
+INNER JOIN compra co ON a.id_aluno = co.id_aluno
+UNION ALL
+SELECT a.nome
+FROM aluno a
+INNER JOIN registro_pontos rp ON a.id_aluno = rp.id_aluno;
+-- Linhas com UNION ALL: 27
+
+-- Com UNION (remove duplicatas):
+SELECT a.nome
+FROM aluno a
+INNER JOIN compra co ON a.id_aluno = co.id_aluno
+UNION
+SELECT a.nome
+FROM aluno a
+INNER JOIN registro_pontos rp ON a.id_aluno = rp.id_aluno;
+-- Linhas com UNION: 12
+-- Explicação: o UNION ALL mantém todas as linhas (inclusive repetidas,
+-- pois um aluno pode ter várias compras e vários registros de pontos).
+-- O UNION remove duplicatas, deixando só um nome por aluno.
+
+-- 6.27 Painel do Diretor
+SELECT 'Total de pontos distribuídos' AS indicador,
+       SUM(pontos) AS valor
+FROM registro_pontos
+UNION ALL
+SELECT 'Total de galeões gastos na loja', SUM(valor_total) FROM compra
+UNION ALL
+SELECT 'Folha salarial dos professores', SUM(salario) FROM professor
+UNION ALL
+SELECT 'Total de galeões nos cofres dos alunos', SUM(saldo_galeoes) FROM aluno;
+
+
+-- =====================================================================
+-- 7. VIEWS
+-- =====================================================================
+
+-- Questão 31 - vw_alunos_casas: nome do aluno, casa e ano escolar
+CREATE VIEW vw_alunos_casas AS
+SELECT a.nome AS aluno,
+       c.nome_casa AS casa,
+       a.ano_escolar
+FROM aluno a
+LEFT JOIN casa c ON a.id_casa = c.id_casa;
+
+-- Questão 32 - vw_boletim: aluno, disciplina, nota e situação
+CREATE VIEW vw_boletim AS
+SELECT a.nome AS aluno,
+       d.nome_disc AS disciplina,
+       m.nota,
+       m.situacao
+FROM matricula m
+INNER JOIN aluno a ON m.id_aluno = a.id_aluno
+INNER JOIN disciplina d ON m.id_disc = d.id_disc;
+
+-- Questão 33 - vw_placar_casas: casa e pontos
+CREATE VIEW vw_placar_casas AS
+SELECT nome_casa AS casa, pontos
+FROM casa
+ORDER BY pontos DESC;
+
+-- Questão 34 - vw_professores_salarios: nome, salário e casa que dirige
+CREATE VIEW vw_professores_salarios AS
+SELECT p.nome AS professor,
+       p.salario,
+       COALESCE(c.nome_casa, 'Sem casa') AS casa_dirigida
+FROM professor p
+LEFT JOIN casa c ON p.id_casa = c.id_casa;
+
+-- Questão 35 - vw_compras_detalhadas: compra, aluno, produto, loja, qtd, valor, data
+CREATE VIEW vw_compras_detalhadas AS
+SELECT co.id_compra,
+       a.nome AS aluno,
+       pr.nome_produto AS produto,
+       pr.loja,
+       co.quantidade,
+       co.valor_total,
+       co.data_compra
+FROM compra co
+INNER JOIN aluno a ON co.id_aluno = a.id_aluno
+INNER JOIN produto pr ON co.id_produto = pr.id_produto;
+
+-- Questão 36 - vw_produtos_estoque: produto, loja, preço, estoque e ativo
+CREATE VIEW vw_produtos_estoque AS
+SELECT nome_produto AS produto,
+       loja,
+       preco,
+       estoque,
+       ativo
+FROM produto;
+
+-- Questão 37 - atualizar uma view e ver o que muda
+-- Atualiza o preço de um produto através da view vw_produtos_estoque
+UPDATE vw_produtos_estoque SET preco = 8.00 WHERE produto = 'Varinha de Azevinho';
+-- O que mudou e por quê: o preço foi atualizado na tabela base produto.
+-- Views simples (uma tabela, sem agregação) são atualizáveis no MySQL, então
+-- a alteração na view reflete diretamente na tabela original.
+
+-- Questão 38 - remover uma view
+DROP VIEW vw_placar_casas;
+-- A view vw_placar_casas foi removida. As demais continuam existindo.
+
+
+-- =====================================================================
+-- 8. CONTROLE DE ACESSO (DCL)
+-- =====================================================================
+-- As questões abaixo criam usuários e papéis. Em um MySQL local, o usuário
+-- root tem permissão para isso. Se o servidor recusar, é porque falta
+-- privilégio de CREATE USER / CREATE ROLE.
+
+-- Questão 39 - criar usuário diretor
+CREATE USER 'diretor'@'localhost' IDENTIFIED BY 'Diretor@123';
+
+-- Questão 40 - criar usuário professor
+CREATE USER 'professor'@'localhost' IDENTIFIED BY 'Professor@123';
+
+-- Questão 41 - criar usuário aluno
+CREATE USER 'aluno'@'localhost' IDENTIFIED BY 'Aluno@123';
+
+-- Questão 42 - conceder SELECT em todas as tabelas para o diretor
+GRANT SELECT ON hogwarts.* TO 'diretor'@'localhost';
+
+-- Questão 43 - conceder SELECT em algumas views para o professor
+GRANT SELECT ON hogwarts.vw_boletim TO 'professor'@'localhost';
+GRANT SELECT ON hogwarts.vw_alunos_casas TO 'professor'@'localhost';
+
+-- Questão 44 - conceder SELECT apenas em vw_placar_casas para o aluno
+GRANT SELECT ON hogwarts.vw_produtos_estoque TO 'aluno'@'localhost';
+-- Resultado de cada comando:
+-- GRANT no diretor: OK (acesso total de leitura)
+-- GRANT no professor: OK (só as duas views)
+-- GRANT no aluno: OK (só a view de produtos)
+-- Se o aluno tentar SELECT em aluno, recebe ERROR 1142 (42000):
+-- SELECT command denied to user 'aluno'@'localhost' for table 'aluno'
+
+-- Questão 45 - trigger atualizando casa via usuário restrito
+-- O usuário 'professor' só tem SELECT em views, então NÃO consegue inserir
+-- em registro_pontos. Para o trigger funcionar, é preciso dar INSERT nele:
+GRANT INSERT ON hogwarts.registro_pontos TO 'professor'@'localhost';
+-- Como o trigger conseguiu atualizar a casa: triggers rodam com os
+-- privilégios do DEFINER (quem criou o trigger, no caso o root), não do
+-- usuário que dispara o INSERT. Por isso o professor pode inserir pontos
+-- sem ter UPDATE direto na tabela casa.
+
+-- Questão 46 - revogar o SELECT do aluno
+REVOKE SELECT ON hogwarts.vw_produtos_estoque FROM 'aluno'@'localhost';
+
+-- Questão 47 - criar papel (role) e conceder
+CREATE ROLE 'leitor_hogwarts';
+GRANT SELECT ON hogwarts.vw_alunos_casas TO 'leitor_hogwarts';
+GRANT SELECT ON hogwarts.vw_boletim TO 'leitor_hogwarts';
+GRANT 'leitor_hogwarts' TO 'professor'@'localhost';
+-- Vantagem dos papéis: em vez de conceder privilégio por usuário, você
+-- cria um papel com o conjunto de permissões e atribui a vários usuários.
+-- Fica mais fácil manter (muda o papel e todos os usuários herdam) e auditar.
+
+-- Questão 48 - remover o papel do usuário e apagar o papel
+REVOKE 'leitor_hogwarts' FROM 'professor'@'localhost';
+DROP ROLE 'leitor_hogwarts';
