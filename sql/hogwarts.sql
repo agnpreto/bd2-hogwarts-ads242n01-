@@ -547,3 +547,63 @@ SELECT nome, saldo_galeoes FROM aluno WHERE id_aluno IN (1, 5);
 SELECT nome_produto, estoque FROM produto WHERE id_produto IN (2, 3);
 SELECT SUM(valor_total) AS soma_compras FROM compra;
 SELECT COUNT(*) AS linhas_log FROM log_auditoria;
+
+
+-- =====================================================================
+-- 5. CONTROLE DE TRANSAÇÕES (TCL)
+-- =====================================================================
+-- Questão 26
+START TRANSACTION;
+UPDATE aluno SET saldo_galeoes = saldo_galeoes - 50 WHERE nome = 'Draco Malfoy';
+UPDATE aluno SET saldo_galeoes = saldo_galeoes + 50 WHERE nome = 'Pansy Parkinson';
+COMMIT;
+
+-- Confira: Draco 150.00 e Pansy 168.00
+SELECT nome, saldo_galeoes FROM aluno WHERE nome IN ('Draco Malfoy', 'Pansy Parkinson');
+
+-- Questão 27
+START TRANSACTION;
+UPDATE casa SET pontos = 0;
+SELECT nome_casa, pontos FROM casa;   -- todas as casas com 0
+ROLLBACK;
+SELECT nome_casa, pontos FROM casa;   -- placar original de volta
+-- Sim, o placar voltou: o ROLLBACK desfez o UPDATE porque ele não tinha sido
+-- confirmado (COMMIT).
+
+-- Questão 28
+START TRANSACTION;
+INSERT INTO compra (id_aluno, id_produto, quantidade, data_compra)
+VALUES (1, 1, 1, '2026-11-10');
+SELECT saldo_galeoes FROM aluno WHERE id_aluno = 1;    -- 47.00
+SELECT estoque FROM produto WHERE id_produto = 1;      -- 8
+ROLLBACK;
+SELECT saldo_galeoes FROM aluno WHERE id_aluno = 1;    -- 54.00
+SELECT estoque FROM produto WHERE id_produto = 1;      -- 9
+-- As alterações feitas pelo trigger (baixa de saldo e de estoque) também foram
+-- desfeitas. O trigger roda dentro da mesma transação do INSERT que o
+-- disparou, então o ROLLBACK desfaz tudo junto: a compra e os efeitos do trigger.
+
+-- Questão 29
+START TRANSACTION;
+INSERT INTO registro_pontos (id_aluno, id_prof, pontos, motivo, data_registro)
+VALUES (12, 4, 15, 'Cuidou das estufas no feriado', '2026-11-10');
+SAVEPOINT sp_pontos_legitimos;
+INSERT INTO registro_pontos (id_aluno, id_prof, pontos, motivo, data_registro)
+VALUES (6, 2, 100, 'Favoritismo descarado', '2026-11-10');
+ROLLBACK TO SAVEPOINT sp_pontos_legitimos;
+COMMIT;
+
+-- Confira: Grifinória 100, Corvinal 50, Lufa-Lufa 50, Sonserina 30;
+-- registro_pontos com 17 linhas
+SELECT nome_casa, pontos FROM casa ORDER BY pontos DESC;
+SELECT COUNT(*) AS registros FROM registro_pontos;
+
+-- Questão 30
+SELECT @@autocommit;
+-- Resposta: o valor 1 significa que o autocommit está ligado: cada comando
+-- executado fora de um START TRANSACTION é confirmado automaticamente, como se
+-- tivesse um COMMIT logo depois (0 significaria que é preciso dar COMMIT
+-- manualmente). Se for executado um CREATE TABLE (ou outro comando DDL) no
+-- meio de uma transação aberta, o MySQL faz um COMMIT implícito: tudo o que
+-- estava pendente é confirmado e a transação termina. Um ROLLBACK depois disso
+-- não desfaz mais nada.
