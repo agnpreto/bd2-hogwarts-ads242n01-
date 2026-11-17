@@ -250,27 +250,49 @@ UPDATE produto SET preco = preco * 0.80 WHERE loja = 'Dedosdemel';
 -- =====================================================================
 -- 3. REMOÇÃO DE DADOS (DELETE) E TESTES DE RESTRIÇÕES
 -- =====================================================================
--- Questão 13
--- Erro:
--- Explicação:
 
--- Questão 14
--- Erro:
--- Explicação:
+-- Questão 13 - tentar excluir a casa 'Sonserina' (deve FALHAR)
+-- DELETE FROM casa WHERE nome_casa = 'Sonserina';
+-- Erro esperado: ERROR 1451 (23000): Cannot delete or update a parent row:
+-- a foreign key constraint fails (`hogwarts`.`professor`, CONSTRAINT
+-- `fk_prof_casa` FOREIGN KEY (`id_casa`) REFERENCES `casa` (`id_casa`))
+-- Explicação: a casa é referenciada por professores e alunos (FK), então o
+-- banco impede a exclusão para não deixar registros órfãos.
 
--- Questão 15
--- Erro:
--- Explicação:
+-- Questão 14 - aluno 'Dobby' no 8º ano (deve FALHAR)
+-- INSERT INTO aluno (nome, ano_escolar, id_casa, saldo_galeoes)
+-- VALUES ('Dobby', 8, 1, 0.00);
+-- Erro esperado: ERROR 3819 (HY000): Check constraint 'chk_aluno_ano' is violated.
+-- Explicação: a CHECK garante ano_escolar entre 1 e 7; 8 viola a regra.
 
--- Questão 16
--- Erro:
--- Explicação:
+-- Questão 15 - e-mail duplicado 'harry.potter@hogwarts.edu' (deve FALHAR)
+-- INSERT INTO aluno (nome, ano_escolar, id_casa, saldo_galeoes, email)
+-- VALUES ('Harry Potter (Polissuco)', 5, 1, 0.00, 'harry.potter@hogwarts.edu');
+-- Erro esperado: ERROR 1062 (23000): Duplicate entry 'harry.potter@hogwarts.edu'
+-- for key 'aluno.uq_aluno_email'
+-- Explicação: a UNIQUE uq_aluno_email impede dois alunos com o mesmo e-mail.
 
--- Questão 17
+-- Questão 16 - tentar excluir o professor 'Severo Snape' (deve FALHAR)
+-- DELETE FROM professor WHERE nome = 'Severo Snape';
+-- Erro esperado: ERROR 1451 (23000): Cannot delete or update a parent row:
+-- a foreign key constraint fails (`hogwarts`.`disciplina`, CONSTRAINT
+-- `fk_disc_prof` FOREIGN KEY (`id_prof`) REFERENCES `professor` (`id_prof`))
+-- Explicação: Snape é referenciado por disciplinas e registros de pontos.
 
--- Questão 18
+-- Questão 17 - excluir Gilderoy Lockhart (FUNCIONA)
+DELETE FROM professor WHERE nome = 'Gilderoy Lockhart';
+-- Por que funciona: Lockhart não dirige casa, não ministra disciplina
+-- (a disciplina 6 é do Lupin) e não tem registros de pontos. Nenhuma FK aponta para ele.
 
--- Questão 19
+-- Questão 18 - remover Vicente Crabbe (primeiro matrículas, depois aluno)
+DELETE FROM matricula
+WHERE id_aluno IN (SELECT id_aluno FROM aluno WHERE nome = 'Vicente Crabbe');
+
+DELETE FROM aluno WHERE nome = 'Vicente Crabbe';
+
+-- Questão 19 - excluir disciplinas sem alunos matriculados
+DELETE FROM disciplina
+WHERE id_disc NOT IN (SELECT DISTINCT id_disc FROM matricula);
 
 
 -- =====================================================================
