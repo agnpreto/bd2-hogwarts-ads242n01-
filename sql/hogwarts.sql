@@ -195,29 +195,56 @@ SELECT
 -- =====================================================================
 -- 2. MANUTENÇÃO PÓS-CARGA (ALTER E UPDATE)
 -- =====================================================================
--- Questão 1
+-- 2.1 ALTERAÇÕES DE ESTRUTURA
 
--- Questão 2
+-- Questão 1: adiciona email em aluno
+ALTER TABLE aluno ADD COLUMN email VARCHAR(100);
 
--- Questão 3
+-- Questão 2: adiciona situacao em matricula
+ALTER TABLE matricula ADD COLUMN situacao VARCHAR(20) DEFAULT 'Cursando';
 
--- Questão 4
+-- Questão 3: adiciona ativo em produto
+ALTER TABLE produto ADD COLUMN ativo CHAR(1) DEFAULT 'S';
 
--- Questão 5
+-- Questão 4: aumenta fundador para VARCHAR(100)
+ALTER TABLE casa MODIFY COLUMN fundador VARCHAR(100);
 
--- Questão 6
+-- Questão 5: renomeia data_contratacao -> data_admissao
+ALTER TABLE professor RENAME COLUMN data_contratacao TO data_admissao;
 
--- Questão 7
+-- 2.2 ATUALIZAÇÕES DE DADOS
 
--- Questão 8
+-- Questão 6: preenche e-mail de todos os alunos
+UPDATE aluno
+SET email = CONCAT(
+    LOWER(REPLACE(SUBSTRING_INDEX(nome, ' ', 1), ' ', '.')),
+    '.',
+    LOWER(REPLACE(SUBSTRING_INDEX(nome, ' ', -1), ' ', '.')),
+    '@hogwarts.edu'
+);
 
--- Questão 9
+-- Questão 7: adiciona UNIQUE em email
+ALTER TABLE aluno ADD CONSTRAINT uq_aluno_email UNIQUE (email);
 
--- Questão 10
+-- Questão 8: bônus de 0.5 na nota da disciplina do Lupin (id_prof = 6), limitado a 10
+UPDATE matricula
+SET nota = LEAST(nota + 0.5, 10)
+WHERE id_disc IN (SELECT id_disc FROM disciplina WHERE id_prof = 6);
 
--- Questão 11
+-- Questão 9: situacao conforme nota
+UPDATE matricula
+SET situacao = CASE WHEN nota >= 6 THEN 'Aprovado' ELSE 'Reprovado' END;
 
--- Questão 12
+-- Questão 10: reajuste 10% para diretores de casa admitidos antes de 1980
+UPDATE professor
+SET salario = salario * 1.10
+WHERE id_casa IS NOT NULL AND data_admissao < '1980-01-01';
+
+-- Questão 11: produtos com estoque zerado ficam inativos
+UPDATE produto SET ativo = 'N' WHERE estoque = 0;
+
+-- Questão 12: promoção Dedosdemel -20%
+UPDATE produto SET preco = preco * 0.80 WHERE loja = 'Dedosdemel';
 
 
 -- =====================================================================
