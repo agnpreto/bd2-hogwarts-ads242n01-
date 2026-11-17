@@ -9,7 +9,7 @@
 
 | Nome | Matrícula | Usuário do GitHub |
 | --- | --- | --- |
-|  |  |  |
+| John Erik de Araujo Santos | 2422168 | jaserik |
 
 ## O cenário
 
