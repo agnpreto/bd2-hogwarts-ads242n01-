@@ -525,114 +525,145 @@ SELECT @@autocommit;
 -- =====================================================================
 -- 6. DESAFIOS DE CONSULTA
 -- =====================================================================
+
 -- ---------- Nível 1: filtros e operadores especiais ----------
--- 6.1
 
--- 6.2
+-- 6.1 Faixa salarial (BETWEEN)
+SELECT nome, salario
+FROM professor
+WHERE salario BETWEEN 6000.00 AND 9000.00
+ORDER BY salario DESC;
 
--- 6.3
+-- 6.2 Anos selecionados (IN)
+SELECT nome, ano_escolar
+FROM aluno
+WHERE ano_escolar IN (1, 4, 6, 7)
+ORDER BY ano_escolar;
 
--- 6.4
+-- 6.3 Busca por padrão (LIKE com _)
+SELECT nome
+FROM aluno
+WHERE nome LIKE '_a%';
 
--- 6.5
+-- 6.4 Disciplina órfã (IS NULL)
+SELECT nome_disc
+FROM disciplina
+WHERE id_prof IS NULL;
 
--- 6.6
+-- 6.5 Fora da faixa (NOT BETWEEN)
+SELECT nome_produto, preco
+FROM produto
+WHERE preco NOT BETWEEN 5.00 AND 20.00
+ORDER BY preco;
+
+-- 6.6 Lojas do Beco Diagonal (DISTINCT)
+SELECT DISTINCT loja
+FROM produto
+ORDER BY loja;
 
 -- ---------- Nível 2: JOINs ----------
--- 6.7
--- Quantos alunos e por quê:
 
--- 6.8
+-- 6.7 Quem é de qual casa (INNER JOIN)
+SELECT a.nome AS aluno, c.nome_casa AS casa
+FROM aluno a
+INNER JOIN casa c ON a.id_casa = c.id_casa
+ORDER BY c.nome_casa, a.nome;
+-- Quantos alunos: 12. Por que não 13: o Teddy Lupin tem id_casa NULL
+-- (ainda não passou pelo Chapéu Seletor), então o INNER JOIN o exclui.
 
--- 6.9
+-- 6.8 Todos os alunos (LEFT JOIN)
+SELECT a.nome AS aluno,
+       COALESCE(c.nome_casa, 'Aguardando o Chapéu Seletor') AS casa
+FROM aluno a
+LEFT JOIN casa c ON a.id_casa = c.id_casa
+ORDER BY a.nome;
 
--- 6.10
+-- 6.9 Professor sem turma (RIGHT JOIN)
+SELECT p.nome AS professor
+FROM disciplina d
+RIGHT JOIN professor p ON d.id_prof = p.id_prof
+WHERE d.id_disc IS NULL;
 
--- 6.11
+-- 6.10 Boletim da Grifinória (JOIN com 5 tabelas)
+SELECT a.nome AS aluno,
+       d.nome_disc AS disciplina,
+       p.nome AS professor,
+       m.nota,
+       m.situacao
+FROM matricula m
+INNER JOIN aluno a ON m.id_aluno = a.id_aluno
+INNER JOIN casa c ON a.id_casa = c.id_casa
+INNER JOIN disciplina d ON m.id_disc = d.id_disc
+LEFT JOIN professor p ON d.id_prof = p.id_prof
+WHERE c.nome_casa = 'Grifinória'
+ORDER BY a.nome, d.nome_disc;
+
+-- 6.11 Extrato do Beco Diagonal (JOIN com 3 tabelas)
+SELECT co.id_compra,
+       a.nome AS aluno,
+       pr.nome_produto AS produto,
+       pr.loja,
+       co.quantidade,
+       co.valor_total,
+       co.data_compra
+FROM compra co
+INNER JOIN aluno a ON co.id_aluno = a.id_aluno
+INNER JOIN produto pr ON co.id_produto = pr.id_produto
+ORDER BY co.data_compra;
 
 -- ---------- Nível 3: agrupamento e agregação ----------
--- 6.12
 
--- 6.13
+-- 6.12 Desempenho por disciplina
+SELECT d.nome_disc AS disciplina,
+       COUNT(m.id_aluno) AS qtd_alunos,
+       ROUND(AVG(m.nota), 2) AS media,
+       MAX(m.nota) AS maior_nota,
+       MIN(m.nota) AS menor_nota
+FROM disciplina d
+INNER JOIN matricula m ON d.id_disc = m.id_disc
+GROUP BY d.nome_disc
+HAVING AVG(m.nota) >= 7
+ORDER BY media DESC;
 
--- 6.14
+-- 6.13 Livro-razão da Taça
+SELECT c.nome_casa AS casa,
+       COUNT(rp.id_registro) AS qtd_registros,
+       SUM(CASE WHEN rp.pontos > 0 THEN rp.pontos ELSE 0 END) AS pontos_ganhos,
+       SUM(CASE WHEN rp.pontos < 0 THEN rp.pontos ELSE 0 END) AS pontos_perdidos,
+       SUM(rp.pontos) AS saldo
+FROM casa c
+LEFT JOIN aluno a ON c.id_casa = a.id_casa
+LEFT JOIN registro_pontos rp ON a.id_aluno = rp.id_aluno
+GROUP BY c.nome_casa;
 
--- 6.15
+-- 6.14 Faturamento por loja
+SELECT pr.loja,
+       COUNT(co.id_compra) AS qtd_compras,
+       SUM(co.valor_total) AS faturamento
+FROM produto pr
+INNER JOIN compra co ON pr.id_produto = co.id_produto
+GROUP BY pr.loja
+HAVING SUM(co.valor_total) > 20
+ORDER BY faturamento DESC;
 
--- 6.16
+-- 6.15 Pontos por mês
+SELECT MONTH(rp.data_registro) AS mes,
+       COUNT(rp.id_registro) AS qtd_registros,
+       SUM(rp.pontos) AS total_pontos
+FROM registro_pontos rp
+GROUP BY MONTH(rp.data_registro)
+ORDER BY mes;
+
+-- 6.16 Professores mais ativos
+SELECT p.nome AS professor,
+       COUNT(rp.id_registro) AS qtd_registros,
+       SUM(rp.pontos) AS total_concedido
+FROM professor p
+INNER JOIN registro_pontos rp ON p.id_prof = rp.id_prof
+GROUP BY p.nome
+HAVING COUNT(rp.id_registro) >= 2
+ORDER BY total_concedido DESC;
 
 -- ---------- Nível 4: subconsultas ----------
+
 -- 6.17
-
--- 6.18
-
--- 6.19
-
--- 6.20
-
--- 6.21
--- > ANY equivale a:
-
--- 6.22
-
--- 6.23
-
--- 6.24
-
--- ---------- Nível 5: UNION ALL ----------
--- 6.25
-
--- 6.26
--- Linhas com UNION ALL:
--- Linhas com UNION:
--- Explicação:
-
--- 6.27
-
-
--- =====================================================================
--- 7. VIEWS
--- =====================================================================
--- Questão 31
-
--- Questão 32
-
--- Questão 33
-
--- Questão 34
-
--- Questão 35
-
--- Questão 36
-
--- Questão 37
--- O que mudou e por quê:
-
--- Questão 38
-
-
--- =====================================================================
--- 8. CONTROLE DE ACESSO (DCL)
--- =====================================================================
--- Questão 39
-
--- Questão 40
-
--- Questão 41
-
--- Questão 42
-
--- Questão 43
-
--- Questão 44
--- Resultado de cada comando:
-
--- Questão 45
--- Como o trigger conseguiu atualizar a casa:
-
--- Questão 46
-
--- Questão 47
--- Vantagem dos papéis:
-
--- Questão 48
