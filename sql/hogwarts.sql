@@ -441,7 +441,6 @@ INSERT INTO compra (id_aluno, id_produto, quantidade, data_compra) VALUES
 -- Explicação: o Caldeirão de Estanho tem estoque 0 desde a carga inicial.
 
 -- Questão 25 - Recuperação do Rony em Poções (id 2)
--- Atualiza a nota SEM mexer na coluna situacao; o trigger recalcula.
 UPDATE matricula SET nota = 6.5 WHERE id_aluno = 3 AND id_disc = 2;
 -- Depois do UPDATE, o trigger trg_situacao_nota muda situacao para 'Aprovado'.
 
@@ -458,16 +457,69 @@ UPDATE professor SET data_admissao = '1993-08-15' WHERE nome = 'Rúbeo Hagrid';
 -- =====================================================================
 -- 5. CONTROLE DE TRANSAÇÕES (TCL)
 -- =====================================================================
--- Questão 26
 
--- Questão 27
+-- Questão 26 - transferência confirmada: Draco (5) -> Pansy (6), 50 galeões
+START TRANSACTION;
+UPDATE aluno SET saldo_galeoes = saldo_galeoes - 50 WHERE id_aluno = 5;
+UPDATE aluno SET saldo_galeoes = saldo_galeoes + 50 WHERE id_aluno = 6;
+COMMIT;
 
--- Questão 28
+-- Questão 27 - O Pirraça atacou: zera pontos, consulta, ROLLBACK, consulta
+START TRANSACTION;
+UPDATE casa SET pontos = 0;
+SELECT 'Placar DENTRO da transação (zerado):' AS etapa;
+SELECT * FROM casa;
+ROLLBACK;
+SELECT 'Placar APÓS o ROLLBACK (voltou):' AS etapa;
+SELECT * FROM casa;
+-- Resposta: sim, o placar voltou ao estado anterior porque o ROLLBACK
+-- desfez o UPDATE feito dentro da transação.
 
--- Questão 29
+-- Questão 28 - Trigger dentro da transação: compra da Varinha pelo Harry
+START TRANSACTION;
+INSERT INTO compra (id_aluno, id_produto, quantidade, data_compra)
+VALUES (1, 1, 1, '2026-11-10');
 
--- Questão 30
--- Resposta:
+SELECT 'DENTRO da transação - saldo do Harry e estoque da varinha:' AS etapa;
+SELECT nome, saldo_galeoes FROM aluno WHERE id_aluno = 1;
+SELECT nome_produto, estoque FROM produto WHERE id_produto = 1;
+
+ROLLBACK;
+
+SELECT 'APÓS o ROLLBACK - saldo do Harry e estoque da varinha:' AS etapa;
+SELECT nome, saldo_galeoes FROM aluno WHERE id_aluno = 1;
+SELECT nome_produto, estoque FROM produto WHERE id_produto = 1;
+-- Resposta: dentro da transação Harry tem 47.00 e a varinha estoque 8
+-- (o trigger trg_baixa_compra rodou). Após o ROLLBACK, voltam para 54.00
+-- e 9, porque a alteração feita pelo trigger também é desfeita — triggers
+-- participam da mesma transação da operação que os disparou.
+
+-- Questão 29 - SAVEPOINT
+START TRANSACTION;
+
+-- a. 15 pontos para Ana Abbott (12), professora Sprout (4)
+INSERT INTO registro_pontos (id_aluno, id_prof, pontos, motivo, data_registro)
+VALUES (12, 4, 15, 'Cuidou das estufas no feriado', '2026-11-10');
+
+-- b. savepoint
+SAVEPOINT sp_pontos_legitimos;
+
+-- c. 100 pontos para Pansy (6), Snape (2) — favoritismo
+INSERT INTO registro_pontos (id_aluno, id_prof, pontos, motivo, data_registro)
+VALUES (6, 2, 100, 'Favoritismo descarado', '2026-11-10');
+
+-- d. volta ao savepoint e confirma
+ROLLBACK TO SAVEPOINT sp_pontos_legitimos;
+COMMIT;
+-- Resultado final: os 15 pontos da Ana ficam (Sonserina não recebe os 100 da Pansy).
+-- Placar final: Grifinória 100, Corvinal 50, Lufa-Lufa 50, Sonserina 30.
+
+-- Questão 30 - pergunta conceitual
+SELECT @@autocommit;
+-- Resposta: o valor 1 indica que o autocommit está LIGADO — cada comando
+-- é confirmado automaticamente. Se você executar um CREATE TABLE no meio
+-- de uma transação aberta, o MySQL faz um COMMIT implícito antes do DDL
+-- (DDL causa commit automático), encerrando a transação em andamento.
 
 
 -- =====================================================================
