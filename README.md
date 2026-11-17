@@ -9,7 +9,7 @@
 
 | Nome | Matrícula | Usuário do GitHub |
 | --- | --- | --- |
-|  |  |  |
+| Damião Barbosa Nunes | 2422736 | dnnyzap |
 
 ## O cenário
 
