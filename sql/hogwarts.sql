@@ -460,16 +460,49 @@ SELECT COUNT(*) FROM log_auditoria; --
 -- 5. CONTROLE DE TRANSAÇÕES (TCL)
 -- =====================================================================
 -- Questão 26
+START TRANSACTION;
+UPDATE aluno SET saldo_galeoes = saldo_galeoes - 50.00 WHERE nome = 'Draco Malfoy';
+UPDATE aluno SET saldo_galeoes = saldo_galeoes + 50.00 WHERE nome = 'Pansy Parkinson';
+COMMIT;
 
 -- Questão 27
+START TRANSACTION;
+UPDATE casa SET pontos = 0;
+SELECT nome_casa, pontos FROM casa;
+ROLLBACK;
+SELECT nome_casa, pontos FROM casa;
+-- Resposta: Sim, o placar voltou aos valores anteriores (Grifinória 100, Sonserina 30, Corvinal 50, Lufa-Lufa 35), pois o ROLLBACK desfez a alteração feita dentro da transação.
 
 -- Questão 28
+START TRANSACTION;
+INSERT INTO compra (id_aluno, id_produto, quantidade, data_compra) VALUES (1, 1, 1, '2026-11-10');
+SELECT saldo_galeoes FROM aluno WHERE id_aluno = 1;
+SELECT estoque FROM produto WHERE id_produto = 1;
+ROLLBACK;
+SELECT saldo_galeoes FROM aluno WHERE id_aluno = 1;
+SELECT estoque FROM produto WHERE id_produto = 1;
+-- Resposta: As alterações feitas pelo trigger (desconto no saldo do Harry e baixa no estoque da varinha) também foram desfeitas pelo ROLLBACK, pois os triggers executam dentro do mesmo contexto transacional do comando que os disparou.
 
 -- Questão 29
+START TRANSACTION;
+INSERT INTO registro_pontos (id_aluno, id_prof, pontos, motivo, data_registro)
+VALUES (12, 4, 15, 'Cuidou das estufas no feriado', '2026-11-10');
+
+SAVEPOINT sp_pontos_legitimos;
+
+INSERT INTO registro_pontos (id_aluno, id_prof, pontos, motivo, data_registro)
+VALUES (6, 2, 100, 'Favoritismo descarado', '2026-11-10');
+
+ROLLBACK TO SAVEPOINT sp_pontos_legitimos;
+COMMIT;
 
 -- Questão 30
--- Resposta:
+SELECT @@autocommit;
+-- Resposta: O valor retornado (1) significa que o modo autocommit está ativado por padrão, ou seja, cada comando SQL executado fora de um START TRANSACTION é confirmado automaticamente. Se um comando DDL (como CREATE TABLE) for executado no meio de uma transação aberta, o MySQL realiza um COMMIT implícito antes de executar o DDL, confirmando tudo o que havia sido feito até aquele momento.
 
+SELECT nome, saldo_galeoes FROM aluno WHERE id_aluno IN (5, 6); -- Draco 150.00, Pansy 168.00
+SELECT nome_casa, pontos FROM casa; -- Grifinória 100, Corvinal 50, Lufa-Lufa 50, Sonserina 30
+SELECT COUNT(*) FROM registro_pontos; -- 17 linhas
 
 -- =====================================================================
 -- 6. DESAFIOS DE CONSULTA
