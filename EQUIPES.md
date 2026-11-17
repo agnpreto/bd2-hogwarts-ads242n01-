@@ -21,3 +21,5 @@ Lista montada a partir dos forks (atualizada em 10/11/2026, 21h10). O trabalho �
 | dhyonkennedy (dono do fork) | — | [dhyonkennedy/Exc.-Banco-de-Dados](https://github.com/dhyonkennedy/Exc.-Banco-de-Dados) | Fork renomeado; falta preencher a tabela Aluno |
 | saviosants (dono do fork) | — | [saviosants/bd2-hogwarts-ads242n01-](https://github.com/saviosants/bd2-hogwarts-ads242n01-) | Fork criado; falta preencher a tabela Aluno |
 | cauagms (dono do fork) | — | [cauagms/bd2-hogwarts-ads242n01-](https://github.com/cauagms/bd2-hogwarts-ads242n01-) | Fork criado; falta preencher a tabela Aluno |
+| Joao Marcos Sampaio de Oliveira (jusampaio1906-coder) | 2396454 | [jusampaio1906-coder/bd2-hogwarts-ads242n01-](https://github.com/jusampaio1906-coder/bd2-hogwarts-ads242n01-.git) | Tabela preenchida; |
+| Cláudio Manoel Couto de Oliveira (TolkYo) | 2418865  | [TolkYo/bd2-hogwarts-ads242n01-](https://github.com/TolkYo/bd2-hogwarts-ads242n01-.git) | tabela preenchida; |
