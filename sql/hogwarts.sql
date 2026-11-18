@@ -124,3 +124,33 @@ SET ano = LEAST(ano + 1, 7);
 -- Teste de restrição de integridade referencial (FK) e CHECK
 -- Tentativa de remoção restrita por FK ou testes de validação de exclusão
 DELETE FROM Aluno WHERE id_aluno = 999; -- Aluno inexistente / teste de restrição
+
+-- =============================================================================
+-- SEÇÃO 4: Triggers (Taça das Casas, Validação, Baixa de Estoque, Auditoria)
+-- Questões 20 a 25
+-- =============================================================================
+
+CREATE OR REPLACE FUNCTION func_auditoria_geral()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO Auditoria (tabela_afetada, operacao, usuario)
+    VALUES (TG_TABLE_NAME, TG_OP, current_user);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_auditoria_aluno
+AFTER INSERT OR UPDATE OR DELETE ON Aluno
+FOR EACH ROW EXECUTE FUNCTION func_auditoria_geral();
+
+
+-- =============================================================================
+-- SEÇÃO 5: TCL (COMMIT, ROLLBACK, SAVEPOINT, autocommit)
+-- Questões 26 a 30
+-- =============================================================================
+
+BEGIN;
+SAVEPOINT sp_inicio;
+UPDATE Casa SET pontos = pontos + 10 WHERE nome = 'Grifinória';
+-- ROLLBACK TO SAVEPOINT sp_inicio;
+COMMIT;
