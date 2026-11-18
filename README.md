@@ -9,7 +9,7 @@
 
 | Nome | Matrícula | Usuário do GitHub |
 | --- | --- | --- |
-|  |  |  |
+| Alexandre Batista | 2387623 | AlexandreBattista |
 
 ## O cenário
 
