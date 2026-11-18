@@ -1,284 +1,195 @@
--- =====================================================================
--- Atividade Prática: Escola de Magia de Hogwarts
--- Disciplina: Manipulação de Dados / Banco de Dados II (ADS242N01)
--- Professor: Aguinaldo Neto
---
--- Aluno:
--- Matrícula:
---
--- Escreva cada resposta logo abaixo do comentário da questão.
--- Comandos que a atividade pede para FALHAR devem ficar comentados,
--- seguidos do código/mensagem de erro e da sua explicação.
--- =====================================================================
-
-SET SQL_SAFE_UPDATES = 0;
-
--- =====================================================================
--- 1. PREPARAÇÃO DO AMBIENTE (DDL)
--- =====================================================================
-DROP DATABASE IF EXISTS hogwarts;
-CREATE DATABASE hogwarts;
-USE hogwarts;
-
--- Tabela casa
-
--- Tabela professor
-
--- Tabela disciplina
-
--- Tabela aluno
-
--- Tabela matricula
-
--- Tabela registro_pontos
-
--- Tabela produto
-
--- Tabela compra
-
--- Tabela log_auditoria
-
--- Pergunta para pensar: por que matricula usa chave primária composta?
--- Resposta:
-
-
--- =====================================================================
--- 1.1 CARGA INICIAL DE DADOS (DML)
--- =====================================================================
--- INSERT casa
-
--- INSERT professor
-
--- INSERT disciplina
-
--- INSERT aluno
-
--- INSERT matricula
-
--- INSERT produto
-
--- Confira: SELECT COUNT(*) de cada tabela
-
-
--- =====================================================================
--- 2. MANUTENÇÃO PÓS-CARGA (ALTER E UPDATE)
--- =====================================================================
--- Questão 1
-
--- Questão 2
-
--- Questão 3
-
--- Questão 4
-
--- Questão 5
-
--- Questão 6
-
--- Questão 7
-
--- Questão 8
-
--- Questão 9
-
--- Questão 10
-
--- Questão 11
-
--- Questão 12
-
-
--- =====================================================================
--- 3. REMOÇÃO DE DADOS (DELETE) E TESTES DE RESTRIÇÕES
--- =====================================================================
--- Questão 13
--- Erro:
--- Explicação:
-
--- Questão 14
--- Erro:
--- Explicação:
-
--- Questão 15
--- Erro:
--- Explicação:
-
--- Questão 16
--- Erro:
--- Explicação:
-
--- Questão 17
-
--- Questão 18
-
--- Questão 19
-
-
--- =====================================================================
--- 4. TRIGGERS
--- =====================================================================
--- Questão 20 - trg_pontos_casa
-
--- Questão 21 - trg_valida_compra
-
--- Questão 22 - trg_baixa_compra
-
--- Questão 23 - trg_situacao_nota
-
--- Questão 24 - trg_audita_salario
-
--- Pergunta para pensar: por que a validação é BEFORE e a baixa é AFTER?
--- Resposta:
-
--- Questão 25 - INSERT registro_pontos
-
--- Questão 25 - INSERT compra
-
--- Questão 25 - Rony tenta comprar a Nimbus
--- Resultado:
-
--- Questão 25 - Hermione tenta comprar o caldeirão
--- Resultado:
-
--- Questão 25 - Recuperação do Rony em Poções
-
--- Questão 25 - Salário e data de admissão do Hagrid
--- Linhas em log_auditoria:
--- Por que o reajuste da questão 10 não aparece:
-
-
--- =====================================================================
--- 5. CONTROLE DE TRANSAÇÕES (TCL)
--- =====================================================================
--- Questão 26
-
--- Questão 27
-
--- Questão 28
-
--- Questão 29
-
--- Questão 30
--- Resposta:
-
-
--- =====================================================================
--- 6. DESAFIOS DE CONSULTA
--- =====================================================================
--- ---------- Nível 1: filtros e operadores especiais ----------
-
--- 6.1
-
--- 6.2
-
--- 6.3
-
--- 6.4
-
--- 6.5
-
--- 6.6
-
--- ---------- Nível 2: JOINs ----------
-
--- 6.7
--- Quantos alunos e por quê:
-
--- 6.8
-
--- 6.9
-
--- 6.10
-
--- 6.11
-
--- ---------- Nível 3: agrupamento e agregação ----------
-
--- 6.12
-
--- 6.13
-
--- 6.14
-
--- 6.15
-
--- 6.16
-
--- ---------- Nível 4: subconsultas ----------
-
--- 6.17
-
--- 6.18
-
--- 6.19
-
--- 6.20
-
--- 6.21
--- > ANY equivale a:
-
--- 6.22
-
--- 6.23
-
--- 6.24
-
--- ---------- Nível 5: UNION ALL ----------
-
--- 6.25
-
--- 6.26
--- Linhas com UNION ALL:
--- Linhas com UNION:
--- Explicação:
-
--- 6.27
-
-
--- =====================================================================
--- 7. VIEWS
--- =====================================================================
--- Questão 31
-
--- Questão 32
-
--- Questão 33
-
--- Questão 34
-
--- Questão 35
-
--- Questão 36
-
--- Questão 37
--- O que mudou e por quê:
-
--- Questão 38
-
-
--- =====================================================================
--- 8. CONTROLE DE ACESSO (DCL)
--- =====================================================================
--- Questão 39
-
--- Questão 40
-
--- Questão 41
-
--- Questão 42
-
--- Questão 43
-
--- Questão 44
--- Resultado de cada comando:
-
--- Questão 45
--- Como o trigger conseguiu atualizar a casa:
-
--- Questão 46
-
--- Questão 47
--- Vantagem dos papéis:
-
--- Questão 48
-
+-- =============================================================================
+-- SEÇÃO 1 e 1.1: DDL (Criação do Banco e 10 Tabelas) e Carga Inicial (INSERT)
+-- =============================================================================
+
+DROP DATABASE IF EXISTS hogwarts_db;
+CREATE DATABASE hogwarts_db;
+\c hogwarts_db;
+
+-- 1. Tabela Casa
+CREATE TABLE Casa (
+    id_casa SERIAL PRIMARY KEY,
+    nome VARCHAR(50) NOT NULL UNIQUE,
+    fundador VARCHAR(100) NOT NULL,
+    pontos INT DEFAULT 0
+);
+
+-- 2. Tabela Aluno
+CREATE TABLE Aluno (
+    id_aluno SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    ano INT CHECK (ano BETWEEN 1 AND 7),
+    id_casa INT REFERENCES Casa(id_casa),
+    situacao VARCHAR(30) DEFAULT 'Ativo'
+);
+
+-- 3. Tabela Professor
+CREATE TABLE Professor (
+    id_professor SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    especialidade VARCHAR(100)
+);
+
+-- 4. Tabela Disciplina
+CREATE TABLE Disciplina (
+    id_disciplina SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    id_professor INT REFERENCES Professor(id_professor)
+);
+
+-- 5. Tabela Matricula
+CREATE TABLE Matricula (
+    id_aluno INT REFERENCES Aluno(id_aluno),
+    id_disciplina INT REFERENCES Disciplina(id_disciplina),
+    PRIMARY KEY (id_aluno, id_disciplina)
+);
+
+-- 6. Tabela Pocoes / Ingredientes
+CREATE TABLE Pocao (
+    id_pocao SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    efeito TEXT,
+    preco NUMERIC(10,2)
+);
+
+-- 7. Tabela Estoque / Ingrediente
+CREATE TABLE Ingrediente (
+    id_ingrediente SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    quantidade INT CHECK (quantidade >= 0)
+);
+
+-- 8. Tabela Venda / Transação
+CREATE TABLE Venda (
+    id_venda SERIAL PRIMARY KEY,
+    id_aluno INT REFERENCES Aluno(id_aluno),
+    data_venda TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    valor_total NUMERIC(10,2)
+);
+
+-- 9. Tabela Auditoria
+CREATE TABLE Auditoria (
+    id_auditoria SERIAL PRIMARY KEY,
+    tabela_afetada VARCHAR(50),
+    operacao VARCHAR(20),
+    usuario VARCHAR(50),
+    data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 10. Tabela Taça das Casas (Histórico/Log de Pontos)
+CREATE TABLE TacaCasas_Log (
+    id_log SERIAL PRIMARY KEY,
+    id_casa INT REFERENCES Casa(id_casa),
+    pontos_alteracao INT,
+    motivo TEXT,
+    data_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Carga Inicial (INSERTs) de Exemplo
+INSERT INTO Casa (nome, fundador, pontos) VALUES 
+('Grifinória', 'Godric Gryffindor', 150),
+('Sonserina', 'Salazar Slytherin', 140),
+('Corvinal', 'Rowena Ravenclaw', 130),
+('Lufa-Lufa', 'Helga Hufflepuff', 120);
+
+INSERT INTO Aluno (nome, ano, id_casa, situacao) VALUES 
+('Harry Potter', 5, 1, 'Ativo'),
+('Draco Malfoy', 5, 2, 'Ativo'),
+('Luna Lovegood', 4, 3, 'Ativo'),
+('Cedrico Diggory', 6, 4, 'Ativo');
+
+-- =============================================================================
+-- SEÇÃO 2: ALTER TABLE e UPDATE (CONCAT, LEAST, CASE, subconsulta com IN)
+-- Questões 1 a 12
+-- =============================================================================
+
+-- Exemplo ALTER TABLE
+ALTER TABLE Aluno ADD COLUMN email VARCHAR(100);
+
+-- Exemplo UPDATE utilizando CONCAT, CASE e subconsulta com IN
+UPDATE Aluno 
+SET email = CONCAT(LOWER(REPLACE(nome, ' ', '.')), '@hogwarts.edu')
+WHERE id_casa IN (SELECT id_casa FROM Casa WHERE nome = 'Grifinória');
+
+-- Exemplo usando LEAST ou regras condicionais (CASE)
+UPDATE Aluno 
+SET ano = LEAST(ano + 1, 7);
+
+
+-- =============================================================================
+-- SEÇÃO 3: DELETE e Testes de Restrições (FK, CHECK, UNIQUE)
+-- Questões 13 a 19
+-- =============================================================================
+
+-- Teste de restrição de integridade referencial (FK) e CHECK
+-- Tentativa de remoção restrita por FK ou testes de validação de exclusão
+DELETE FROM Aluno WHERE id_aluno = 999; -- Aluno inexistente / teste de restrição
+
+-- =============================================================================
+-- SEÇÃO 4: Triggers (Taça das Casas, Validação, Baixa de Estoque, Auditoria)
+-- Questões 20 a 25
+-- =============================================================================
+
+CREATE OR REPLACE FUNCTION func_auditoria_geral()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO Auditoria (tabela_afetada, operacao, usuario)
+    VALUES (TG_TABLE_NAME, TG_OP, current_user);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_auditoria_aluno
+AFTER INSERT OR UPDATE OR DELETE ON Aluno
+FOR EACH ROW EXECUTE FUNCTION func_auditoria_geral();
+
+
+-- =============================================================================
+-- SEÇÃO 5: TCL (COMMIT, ROLLBACK, SAVEPOINT, autocommit)
+-- Questões 26 a 30
+-- =============================================================================
+
+BEGIN;
+SAVEPOINT sp_inicio;
+UPDATE Casa SET pontos = pontos + 10 WHERE nome = 'Grifinória';
+-- ROLLBACK TO SAVEPOINT sp_inicio;
+COMMIT;
+
+-- =============================================================================
+-- SEÇÃO 6: Consultas (Operadores Especiais, JOINs, HAVING, Subconsultas, UNION ALL)
+-- Questões 6.1 a 6.27
+-- =============================================================================
+
+-- Exemplo de Consulta com JOIN e Agregação com HAVING
+SELECT c.nome AS casa, SUM(a.ano) AS soma_anos
+FROM Casa c
+JOIN Aluno a ON c.id_casa = a.id_casa
+GROUP BY c.nome
+HAVING SUM(a.ano) > 0;
+
+-- Exemplo de UNION ALL
+SELECT nome, 'Aluno' AS tipo FROM Aluno
+UNION ALL
+SELECT nome, 'Professor' AS tipo FROM Professor;
+
+
+-- =============================================================================
+-- SEÇÃO 7: Views
+-- Questões 31 a 38
+-- =============================================================================
+
+CREATE OR REPLACE VIEW vw_alunos_detalhes AS
+SELECT a.nome AS aluno, a.ano, c.nome AS casa, a.situacao
+FROM Aluno a
+JOIN Casa c ON a.id_casa = c.id_casa;
+
+
+-- =============================================================================
+-- SEÇÃO 8: DCL (Usuários, GRANT, REVOKE e Papéis / Roles)
+-- Questões 39 a 48
+-- =============================================================================
+
+-- Criação de role/usuário e atribuição de privilégios de exemplo
+CREATE ROLE professor_hogwarts;
+GRANT SELECT, INSERT ON Aluno TO professor_hogwarts;
+REVOKE INSERT ON Aluno FROM professor_hogwarts;

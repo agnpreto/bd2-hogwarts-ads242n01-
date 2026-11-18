@@ -8,7 +8,7 @@
 ## Aluno
 
 | Nome | Matrícula | Usuário do GitHub |
-| --- | --- | --- |
+| Maria Eduarda Almeida Costa | 2411431 | eduardaalmeida-dev |
 |  |  |  |
 
 ## O cenário
