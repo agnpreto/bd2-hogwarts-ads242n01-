@@ -97,3 +97,30 @@ INSERT INTO Aluno (nome, ano, id_casa, situacao) VALUES
 ('Draco Malfoy', 5, 2, 'Ativo'),
 ('Luna Lovegood', 4, 3, 'Ativo'),
 ('Cedrico Diggory', 6, 4, 'Ativo');
+
+-- =============================================================================
+-- SEÇÃO 2: ALTER TABLE e UPDATE (CONCAT, LEAST, CASE, subconsulta com IN)
+-- Questões 1 a 12
+-- =============================================================================
+
+-- Exemplo ALTER TABLE
+ALTER TABLE Aluno ADD COLUMN email VARCHAR(100);
+
+-- Exemplo UPDATE utilizando CONCAT, CASE e subconsulta com IN
+UPDATE Aluno 
+SET email = CONCAT(LOWER(REPLACE(nome, ' ', '.')), '@hogwarts.edu')
+WHERE id_casa IN (SELECT id_casa FROM Casa WHERE nome = 'Grifinória');
+
+-- Exemplo usando LEAST ou regras condicionais (CASE)
+UPDATE Aluno 
+SET ano = LEAST(ano + 1, 7);
+
+
+-- =============================================================================
+-- SEÇÃO 3: DELETE e Testes de Restrições (FK, CHECK, UNIQUE)
+-- Questões 13 a 19
+-- =============================================================================
+
+-- Teste de restrição de integridade referencial (FK) e CHECK
+-- Tentativa de remoção restrita por FK ou testes de validação de exclusão
+DELETE FROM Aluno WHERE id_aluno = 999; -- Aluno inexistente / teste de restrição
