@@ -154,3 +154,42 @@ SAVEPOINT sp_inicio;
 UPDATE Casa SET pontos = pontos + 10 WHERE nome = 'Grifinória';
 -- ROLLBACK TO SAVEPOINT sp_inicio;
 COMMIT;
+
+-- =============================================================================
+-- SEÇÃO 6: Consultas (Operadores Especiais, JOINs, HAVING, Subconsultas, UNION ALL)
+-- Questões 6.1 a 6.27
+-- =============================================================================
+
+-- Exemplo de Consulta com JOIN e Agregação com HAVING
+SELECT c.nome AS casa, SUM(a.ano) AS soma_anos
+FROM Casa c
+JOIN Aluno a ON c.id_casa = a.id_casa
+GROUP BY c.nome
+HAVING SUM(a.ano) > 0;
+
+-- Exemplo de UNION ALL
+SELECT nome, 'Aluno' AS tipo FROM Aluno
+UNION ALL
+SELECT nome, 'Professor' AS tipo FROM Professor;
+
+
+-- =============================================================================
+-- SEÇÃO 7: Views
+-- Questões 31 a 38
+-- =============================================================================
+
+CREATE OR REPLACE VIEW vw_alunos_detalhes AS
+SELECT a.nome AS aluno, a.ano, c.nome AS casa, a.situacao
+FROM Aluno a
+JOIN Casa c ON a.id_casa = c.id_casa;
+
+
+-- =============================================================================
+-- SEÇÃO 8: DCL (Usuários, GRANT, REVOKE e Papéis / Roles)
+-- Questões 39 a 48
+-- =============================================================================
+
+-- Criação de role/usuário e atribuição de privilégios de exemplo
+CREATE ROLE professor_hogwarts;
+GRANT SELECT, INSERT ON Aluno TO professor_hogwarts;
+REVOKE INSERT ON Aluno FROM professor_hogwarts;
