@@ -9,7 +9,7 @@
 
 | Nome | Matrícula | Usuário do GitHub |
 | --- | --- | --- |
-|  |  |  |
+|Camila de JesusPinheiro  |  2417715 | Camilapinheiro-alo  |
 
 ## O cenário
 
